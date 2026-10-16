@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IFT 6075 — Expérience Relecture & Modalités</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app-container">
+
+    <!-- HEADER / NAVIGATION STATUS -->
+    <header id="main-header">
+      <div class="header-content">
+        <span class="app-title">IFT 6075 — Protocole Relecture & Modalités</span>
+        <span id="header-participant" class="header-tag">Aucun participant</span>
+        <span id="header-step" class="header-tag">Configuration</span>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main id="main-content">
+
+      <!-- ======================================================== -->
+      <!-- 1. SETUP SCREEN (POUR L'EXPÉRIMENTATEUR) -->
+      <!-- ======================================================== -->
+      <section id="screen-setup" class="screen active">
+        <div class="card">
+          <h1>Configuration de la session (Expérimentateur)</h1>
+          <p class="subtitle">Sélectionnez le participant assigné selon le carré latin avant d'installer le participant.</p>
+          <hr>
+
+          <div class="form-group">
+            <label for="select-participant"><strong>Numéro de participant (N = 12) :</strong></label>
+            <select id="select-participant" class="form-control">
+              <option value="">-- Choisir un participant --</option>
+              <option value="P01">P01</option>
+              <option value="P02">P02</option>
+              <option value="P03">P03</option>
+              <option value="P04">P04</option>
+              <option value="P05">P05</option>
+              <option value="P06">P06</option>
+              <option value="P07">P07</option>
+              <option value="P08">P08</option>
+              <option value="P09">P09</option>
+              <option value="P10">P10</option>
+              <option value="P11">P11</option>
+              <option value="P12">P12</option>
+            </select>
+          </div>
+
+          <!-- Configuration summary for experimenter -->
+          <div id="setup-details" class="info-box hidden">
+            <p><strong>Plan assigné (Carré Latin) :</strong></p>
+            <ul id="setup-order-list"></ul>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="check-practice" checked>
+              <strong>Inclure le bloc d'entraînement (pratique)</strong> — vivement recommandé pour familiariser le participant avec la sélection au clic et le format du questionnaire.
+            </label>
+          </div>
+
+          <hr>
+
+          <div class="action-row">
+            <button type="button" id="btn-start-experiment" class="btn btn-primary" disabled>Continuer vers le questionnaire pré-condition</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 2. PRE-CONDITION QUESTIONNAIRE SCREEN (NAGANO PRECONDITION.PDF) -->
+      <!-- ======================================================== -->
+      <section id="screen-precondition" class="screen">
+        <div class="card">
+          <div class="step-indicator">Étape 1 : Questionnaire Pré-Condition</div>
+          <h1>Questionnaire Pré-Condition</h1>
+          <p class="subtitle">Ce court questionnaire recueille des renseignements de cadrage avant de débuter les tâches de relecture.</p>
+          <hr>
+
+          <form id="precondition-form">
+            <div class="form-group">
+              <label for="precond-age"><strong>1. Âge du participant :</strong></label>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="number" id="precond-age" class="form-control" min="18" max="99" required placeholder="Ex : 23" style="max-width: 160px;">
+                <span>ans</span>
+              </div>
+            </div>
+
+            <hr>
+
+            <div class="form-group">
+              <label><strong>2. Genre :</strong></label>
+              <div class="radio-vertical-group">
+                <label><input type="radio" name="precond-genre" value="Féminin" required> Féminin</label>
+                <label><input type="radio" name="precond-genre" value="Masculin"> Masculin</label>
+                <label><input type="radio" name="precond-genre" value="Non-binaire / Autre"> Non-binaire / Autre</label>
+                <label><input type="radio" name="precond-genre" value="Préfère ne pas répondre"> Préfère ne pas répondre</label>
+              </div>
+            </div>
+
+            <hr>
+
+            <div class="form-group likert-group">
+              <label class="likert-label"><strong>3. Quel est votre niveau de confort en français ?</strong><br><span class="help-text">(1 = Très faible, 5 = Très élevé / Langue maternelle)</span></label>
+              <div class="likert-options">
+                <label><input type="radio" name="precond-confort-fr" value="1" required> 1 - Très faible</label>
+                <label><input type="radio" name="precond-confort-fr" value="2"> 2 - Faible</label>
+                <label><input type="radio" name="precond-confort-fr" value="3"> 3 - Moyen</label>
+                <label><input type="radio" name="precond-confort-fr" value="4"> 4 - Élevé</label>
+                <label><input type="radio" name="precond-confort-fr" value="5"> 5 - Très élevé / Langue maternelle</label>
+              </div>
+            </div>
+
+            <hr>
+
+            <div class="form-group likert-group">
+              <label class="likert-label"><strong>4. Quel est votre niveau de confort pour réviser et corriger un texte ?</strong><br><span class="help-text">(1 = Pas du tout confortable, 5 = Très confortable)</span></label>
+              <div class="likert-options">
+                <label><input type="radio" name="precond-confort-rev" value="1" required> 1 - Pas du tout confortable</label>
+                <label><input type="radio" name="precond-confort-rev" value="2"> 2 - Peu confortable</label>
+                <label><input type="radio" name="precond-confort-rev" value="3"> 3 - Moyennement confortable</label>
+                <label><input type="radio" name="precond-confort-rev" value="4"> 4 - Confortable</label>
+                <label><input type="radio" name="precond-confort-rev" value="5"> 5 - Très confortable</label>
+              </div>
+            </div>
+
+            <hr>
+
+            <div class="form-group likert-group">
+              <label class="likert-label"><strong>5. À quelle fréquence lisez-vous (livres, articles, essais, etc.) ?</strong><br><span class="help-text">(1 = Rarement / Jamais, 5 = Quotidiennement / Tous les jours)</span></label>
+              <div class="likert-options">
+                <label><input type="radio" name="precond-freq-lecture" value="1" required> 1 - Rarement / Jamais</label>
+                <label><input type="radio" name="precond-freq-lecture" value="2"> 2 - Quelques fois par mois</label>
+                <label><input type="radio" name="precond-freq-lecture" value="3"> 3 - Quelques fois par semaine</label>
+                <label><input type="radio" name="precond-freq-lecture" value="4"> 4 - Régulièrement</label>
+                <label><input type="radio" name="precond-freq-lecture" value="5"> 5 - Quotidiennement / Tous les jours</label>
+              </div>
+            </div>
+
+            <hr>
+
+            <div class="action-row">
+              <button type="submit" class="btn btn-primary btn-lg">Enregistrer et passer au réglage audio</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 3. AUDIO & SPEED CALIBRATION SCREEN (POUR LE PARTICIPANT) -->
+      <!-- ======================================================== -->
+      <section id="screen-audio-calibration" class="screen">
+        <div class="card">
+          <div class="step-indicator">Accueil & Préparation du matériel</div>
+          <h1>Réglage du volume sonore et de la vitesse de lecture</h1>
+          <p class="subtitle">Bienvenue ! Veuillez mettre votre casque d'écoute audio sur vos oreilles.</p>
+          
+          <div class="instruction-box">
+            <p><strong>Présentation :</strong> Au cours de cette expérience, vous testerez notamment la relecture assistée par synthèse vocale (TTS), où une voix lit le texte dans vos écouteurs en même temps que vous le suivez des yeux.</p>
+            <p>Afin que l'écoute soit parfaitement adaptée à votre confort et à votre vitesse naturelle de lecture, prenez un instant ci-dessous pour <strong>ajuster le volume sonore</strong> et <strong>ajuster la vitesse de lecture</strong>.</p>
+          </div>
+
+          <!-- Volume Controls -->
+          <div class="calibration-section">
+            <div class="calibration-row">
+              <label for="tts-volume-slider"><strong>1. Volume sonore au casque :</strong> <span id="tts-volume-val" class="highlight-val">100%</span></label>
+              <div class="slider-container">
+                <span class="slider-min">Bas</span>
+                <input type="range" id="tts-volume-slider" min="0.1" max="1.0" step="0.05" value="1.0" class="form-range">
+                <span class="slider-max">Fort</span>
+              </div>
+            </div>
+
+            <!-- Speed Controls -->
+            <div class="calibration-row">
+              <label for="tts-speed-slider"><strong>2. Vitesse de lecture de la voix (TTS) :</strong> <span id="tts-speed-val" class="highlight-val">1.0x (Normal)</span></label>
+              <div class="speed-presets" id="speed-presets-container">
+                <button type="button" class="btn btn-sm btn-speed-preset" data-speed="0.75">0.75x (Lent)</button>
+                <button type="button" class="btn btn-sm btn-speed-preset" data-speed="0.9">0.9x (Modéré)</button>
+                <button type="button" class="btn btn-sm btn-speed-preset active" data-speed="1.0">1.0x (Normal)</button>
+                <button type="button" class="btn btn-sm btn-speed-preset" data-speed="1.1">1.1x (Dynamique)</button>
+                <button type="button" class="btn btn-sm btn-speed-preset" data-speed="1.25">1.25x (Rapide)</button>
+                <button type="button" class="btn btn-sm btn-speed-preset" data-speed="1.5">1.5x (Très rapide)</button>
+              </div>
+              <div class="slider-container" style="margin-top: 8px;">
+                <span class="slider-min">0.75x</span>
+                <input type="range" id="tts-speed-slider" min="0.75" max="1.5" step="0.05" value="1.0" class="form-range">
+                <span class="slider-max">1.50x</span>
+              </div>
+            </div>
+
+            <!-- Voice Selection -->
+            <div class="calibration-row">
+              <label for="select-tts-voice"><strong>3. Voix de synthèse française :</strong></label>
+              <select id="select-tts-voice" class="form-control" style="max-width: 340px;"></select>
+            </div>
+
+            <!-- Audio Test Button -->
+            <div class="calibration-row test-row">
+              <button type="button" id="btn-test-tts" class="btn btn-secondary">Écouter un extrait de test au casque</button>
+              <span id="tts-test-status" class="status-msg"></span>
+            </div>
+          </div>
+
+          <div class="info-box">
+            <p><strong>Note importante :</strong> La vitesse et le volume réglés ici seront utilisés pour les blocs de lecture avec synthèse vocale. Pendant la lecture, vous pourrez mettre l'audio en pause ou le recommencer au besoin.</p>
+          </div>
+
+          <hr>
+
+          <div class="action-row">
+            <button type="button" id="btn-start-from-calibration" class="btn btn-primary btn-lg">Commencer l'expérience</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 3. PRACTICE INTRO SCREEN (EXPLICATIONS AVANT PRATIQUE) -->
+      <!-- ======================================================== -->
+      <section id="screen-practice-intro" class="screen">
+        <div class="card">
+          <div class="step-indicator">Étape préliminaire : Entraînement</div>
+          <h1>Pratique de familiarisation</h1>
+          <p class="subtitle">Cette étape vous permet de tester le système sans stress avant les textes officiels.</p>
+
+          <div class="instruction-box">
+            <h3>Consignes de la relecture :</h3>
+            <p class="large-text">Vous allez lire un court texte de pratique (environ 65 mots). Dans ce texte, <strong>2 erreurs ont été insérées</strong> (par exemple un mot en double ou une faute d'accord).</p>
+            <ul style="padding-left: 20px; margin-top: 8px; font-size: 15px; line-height: 1.8;">
+              <li><strong>Repérer une erreur :</strong> Dès que vous voyez une erreur, <strong>cliquez sur le mot</strong> avec la souris. Il deviendra surligné en rouge.</li>
+              <li><strong>Annuler une sélection :</strong> Si vous avez cliqué sur un mot par inadvertance, <strong>recliquez dessus</strong> pour le désélectionner.</li>
+              <li><strong>Validation :</strong> Lorsque vous avez terminé votre relecture, cliquez sur le bouton <em>« Terminer l'entraînement »</em> en bas de page.</li>
+              <li><strong>Compréhension :</strong> Vous répondrez ensuite à 2 questions à choix multiples pour tester le format du questionnaire.</li>
+            </ul>
+          </div>
+
+          <div class="info-box">
+            <p>Prenez tout votre temps pour bien comprendre le fonctionnement du clic. Lorsque vous êtes prêt, cliquez sur le bouton ci-dessous.</p>
+          </div>
+
+          <div class="action-row">
+            <button type="button" id="btn-start-practice-reading" class="btn btn-primary btn-lg">Commencer l'entraînement</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 4. PRACTICE READING TRIAL SCREEN -->
+      <!-- ======================================================== -->
+      <section id="screen-practice" class="screen">
+        <div class="card">
+          <div class="step-indicator">Étape préliminaire : Entraînement</div>
+          <h2 id="practice-title">Pratique — Familiarisation</h2>
+          <div class="instruction-box">
+            <p><strong>Rappel :</strong> Lisez le texte ci-dessous. Dès que vous voyez une erreur, <strong>cliquez sur le mot</strong> pour le marquer. Recliquez dessus pour annuler si besoin. Lorsque vous avez fini, cliquez sur <em>« Terminer l'entraînement »</em>.</p>
+          </div>
+
+          <div class="reading-area" id="practice-reading-area">
+            <!-- Practice words dynamically injected here -->
+          </div>
+
+          <div class="task-footer">
+            <span class="selection-counter" id="practice-counter">0 mot sélectionné</span>
+            <button type="button" id="btn-finish-practice" class="btn btn-primary">Terminer l'entraînement</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 5. PRACTICE QUIZ INTRO SCREEN -->
+      <!-- ======================================================== -->
+      <section id="screen-practice-quiz-intro" class="screen">
+        <div class="card">
+          <div class="step-indicator">Entraînement — Test de rétention</div>
+          <h1>Questionnaire de compréhension (Entraînement)</h1>
+          <p class="subtitle">La lecture du texte de pratique est terminée.</p>
+
+          <div class="instruction-box">
+            <p class="large-text">Le texte d'entraînement a été masqué et n'est plus visible.</p>
+            <p>Vous allez maintenant répondre à <strong>2 questions à choix multiples</strong> portant sur l'histoire que vous venez de lire.</p>
+            <p>Cette étape permet de vérifier que le format du questionnaire est clair et simple à utiliser.</p>
+          </div>
+
+          <div class="action-row">
+            <button type="button" id="btn-start-practice-quiz" class="btn btn-primary btn-lg">Commencer le questionnaire d'entraînement</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 6. PRACTICE QUIZ SCREEN -->
+      <!-- ======================================================== -->
+      <section id="screen-practice-quiz" class="screen">
+        <div class="card">
+          <div class="step-indicator">Entraînement — Test de rétention</div>
+          <h2>Questions de compréhension (Entraînement)</h2>
+          <p class="help-text">Le texte est masqué. Répondez aux questions suivantes pour tester le fonctionnement du questionnaire :</p>
+          <hr>
+
+          <form id="practice-quiz-form">
+            <div id="practice-quiz-container"></div>
+            <div class="action-row">
+              <button type="submit" class="btn btn-primary">Valider mes réponses</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 7. PRACTICE FINISH / DEBRIEF SCREEN -->
+      <!-- ======================================================== -->
+      <section id="screen-practice-finish" class="screen">
+        <div class="card">
+          <div class="step-indicator">Entraînement complété</div>
+          <h1>Entraînement terminé avec succès !</h1>
+          <p class="subtitle">Vous maîtrisez maintenant parfaitement l'outil de sélection au clic et le questionnaire.</p>
+
+          <div class="info-box" id="practice-debrief-box">
+            <p><strong>Bilan de votre pratique :</strong></p>
+            <div id="practice-debrief-stats"></div>
+          </div>
+
+          <div class="instruction-box">
+            <h3>À quoi s'attendre pour l'expérience officielle :</h3>
+            <p class="large-text">L'expérience comprend <strong>3 blocs de lecture</strong> d'environ 300 mots chacun. Chaque bloc testera une modalité de lecture différente :</p>
+            <ul style="padding-left: 20px; margin-top: 8px; line-height: 1.8;">
+              <li><strong>Lecture silencieuse :</strong> Vous lisez dans votre tête à votre rythme habituel.</li>
+              <li><strong>Lecture à voix haute :</strong> Vous lisez à voix haute de manière claire et continue.</li>
+              <li><strong>Lecture assistée par synthèse vocale (TTS) :</strong> Vous écoutez le texte au casque pendant que vous le suivez des yeux.</li>
+            </ul>
+            <p style="margin-top: 10px;">Avant chaque texte, un écran de consigne vous indiquera quelle modalité adopter. Dans chaque texte, il y aura <strong>exactement 6 erreurs</strong> à repérer.</p>
+          </div>
+
+          <div class="action-row">
+            <button type="button" id="btn-start-official-experiment" class="btn btn-primary btn-lg">Commencer l'expérience officielle</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 8. CONDITION INSTRUCTION SCREEN (AVANT CHAQUE BLOC) -->
+      <!-- ======================================================== -->
+      <section id="screen-instruction" class="screen">
+        <div class="card">
+          <div class="step-indicator" id="instruction-block-indicator">Bloc 1 sur 3 — Consignes</div>
+          <h1 id="instruction-condition-title">Modalité</h1>
+          
+          <div class="instruction-box">
+            <h3 id="instruction-heading">Consigne spécifique pour cette condition :</h3>
+            <p id="instruction-body" class="large-text"></p>
+          </div>
+
+          <div id="instruction-tts-notice" class="info-box hidden">
+            <p><strong>Rappel pour la modalité TTS :</strong> Mettez votre casque sur vos oreilles. La lecture audio démarrera automatiquement à la vitesse étalonnée dès que vous cliquerez sur le bouton ci-dessous. Vous pourrez mettre l'audio en pause ou le recommencer au besoin pendant la lecture.</p>
+          </div>
+
+          <div class="info-box">
+            <p><strong>Rappel :</strong> Dès que vous voyez une erreur, cliquez sur le mot pour le marquer en rouge (recliquez pour annuler). Lisez à votre rythme habituel de relecture. Dès que vous avez terminé votre lecture, cliquez sur <em>« Terminer la relecture »</em> au bas de la page.</p>
+          </div>
+
+          <div class="action-row">
+            <button type="button" id="btn-launch-trial" class="btn btn-primary btn-lg">Commencer la relecture de ce bloc</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 9. READING / ERROR DETECTION TRIAL SCREEN -->
+      <!-- ======================================================== -->
+      <section id="screen-trial" class="screen">
+        <div class="card">
+          <div class="task-top-bar">
+            <div>
+              <span class="block-tag" id="trial-block-tag">Bloc 1/3</span>
+              <span class="condition-tag" id="trial-condition-tag">Modalité</span>
+            </div>
+            <div class="timer-display" id="trial-timer">Temps : 00:00</div>
+          </div>
+
+          <!-- TTS Player Controls with adjustable live speed -->
+          <div id="tts-control-bar" class="tts-control-bar hidden">
+            <div class="tts-status">
+              <span id="tts-audio-indicator" class="tts-indicator">Audio en lecture</span>
+              <span id="tts-audio-detail">Synthèse vocale active au casque</span>
+            </div>
+            
+            <div class="tts-controls-group">
+              <!-- TTS active speed display (calibrated in step 2) -->
+              <div class="tts-speed-control">
+                <span id="tts-trial-speed-badge" class="header-tag" style="font-weight: 600;">Vitesse : 1.0x</span>
+              </div>
+
+              <div class="tts-buttons">
+                <button type="button" id="btn-tts-pause" class="btn btn-secondary btn-sm">Pause</button>
+                <button type="button" id="btn-tts-restart" class="btn btn-secondary btn-sm">Recommencer l'audio</button>
+              </div>
+            </div>
+          </div>
+
+          <h2 id="trial-text-title" class="story-title">Titre de l'histoire</h2>
+
+          <!-- Main Clickable Text Area -->
+          <div class="reading-area" id="trial-reading-area">
+            <!-- Words dynamically injected -->
+          </div>
+
+          <div class="task-footer">
+            <span class="selection-counter" id="trial-counter">0 mot sélectionné</span>
+            <button type="button" id="btn-finish-trial" class="btn btn-primary">Terminer la relecture</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 10. TRIAL QUIZ INTRO SCREEN -->
+      <!-- ======================================================== -->
+      <section id="screen-trial-quiz-intro" class="screen">
+        <div class="card">
+          <div class="step-indicator" id="trial-quiz-intro-indicator">Bloc 1 sur 3 — Relecture terminée</div>
+          <h1>Questionnaire de rétention de l'information</h1>
+          <p class="subtitle">Vous avez terminé la relecture de ce texte avec succès.</p>
+
+          <div class="instruction-box">
+            <p class="large-text">Le texte a été masqué et ne sera plus visible.</p>
+            <p>Vous allez maintenant répondre à <strong>3 questions factuelles à choix multiples</strong> portant sur l'histoire que vous venez de lire.</p>
+            <p>Répondez de mémoire, du mieux possible, sans vous précipiter.</p>
+          </div>
+
+          <div class="action-row">
+            <button type="button" id="btn-start-trial-quiz" class="btn btn-primary btn-lg">Commencer le questionnaire</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 11. RETENTION QUIZ SCREEN -->
+      <!-- ======================================================== -->
+      <section id="screen-quiz" class="screen">
+        <div class="card">
+          <div class="step-indicator" id="quiz-block-indicator">Bloc 1 sur 3 — Quiz de rétention</div>
+          <h2>Questionnaire de rétention de l'information</h2>
+          <p class="help-text">Le texte est masqué. Sans consulter le texte, répondez aux 3 questions factuelles suivantes :</p>
+          <hr>
+
+          <form id="trial-quiz-form">
+            <div id="trial-quiz-container"></div>
+            <div class="action-row">
+              <button type="submit" class="btn btn-primary">Enregistrer les réponses et continuer</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 12. RATING INTRO SCREEN -->
+      <!-- ======================================================== -->
+      <section id="screen-rating-intro" class="screen">
+        <div class="card">
+          <div class="step-indicator" id="rating-intro-indicator">Bloc 1 sur 3 — Évaluation subjective</div>
+          <h1 id="rating-intro-title">Vos impressions sur la modalité</h1>
+          <p class="subtitle">Le questionnaire de compréhension a été enregistré.</p>
+
+          <div class="instruction-box">
+            <p class="large-text">Nous souhaitons maintenant recueillir vos impressions subjectives sur la modalité de lecture que vous venez d'utiliser.</p>
+            <p>Vous allez évaluer sur une échelle de 1 à 5 :</p>
+            <ul style="padding-left: 20px; margin-top: 6px; line-height: 1.8;">
+              <li><strong>L'agréabilité globale</strong> de la relecture avec cette modalité.</li>
+              <li><strong>L'effort mental ressenti</strong> pendant la tâche.</li>
+            </ul>
+            <p style="margin-top: 8px;">Vous pourrez également ajouter un commentaire libre si vous le souhaitez.</p>
+          </div>
+
+          <div class="action-row">
+            <button type="button" id="btn-start-rating" class="btn btn-primary btn-lg">Commencer l'évaluation</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 13. SUBJECTIVE RATING SCREEN (MINI-LIKERT) -->
+      <!-- ======================================================== -->
+      <section id="screen-rating" class="screen">
+        <div class="card">
+          <div class="step-indicator" id="rating-block-indicator">Bloc 1 sur 3 — Évaluation subjective</div>
+          <h2 id="rating-condition-title">Évaluation de la modalité</h2>
+          <p class="help-text">Veuillez indiquer vos impressions pour la modalité que vous venez d'expérimenter :</p>
+          <hr>
+
+          <form id="rating-form">
+            <!-- Likert 1: Agréabilité -->
+            <div class="form-group likert-group">
+              <label class="likert-label"><strong>1. Agréabilité globale :</strong> Comment avez-vous trouvé la relecture avec cette modalité ?</label>
+              <div class="likert-options">
+                <label><input type="radio" name="agreabilite" value="1" required> 1 - Très désagréable</label>
+                <label><input type="radio" name="agreabilite" value="2"> 2 - Plutôt désagréable</label>
+                <label><input type="radio" name="agreabilite" value="3"> 3 - Neutre / Moyen</label>
+                <label><input type="radio" name="agreabilite" value="4"> 4 - Plutôt agréable</label>
+                <label><input type="radio" name="agreabilite" value="5"> 5 - Très agréable</label>
+              </div>
+            </div>
+
+            <hr>
+
+            <!-- Likert 2: Effort perçu -->
+            <div class="form-group likert-group">
+              <label class="likert-label"><strong>2. Effort mental ressenti :</strong> Quel niveau d'effort ou de charge mentale cette modalité a-t-elle exigé ?</label>
+              <div class="likert-options">
+                <label><input type="radio" name="effort" value="1" required> 1 - Très faible effort</label>
+                <label><input type="radio" name="effort" value="2"> 2 - Faible effort</label>
+                <label><input type="radio" name="effort" value="3"> 3 - Effort modéré</label>
+                <label><input type="radio" name="effort" value="4"> 4 - Effort élevé</label>
+                <label><input type="radio" name="effort" value="5"> 5 - Effort très élevé</label>
+              </div>
+            </div>
+
+            <hr>
+
+            <!-- Qualitative remarks -->
+            <div class="form-group">
+              <label for="rating-comments"><strong>3. Remarque ou observation particulière (optionnel) :</strong></label>
+              <textarea id="rating-comments" class="form-control" rows="2" placeholder="Facilité, gêne, fatigue ressentie, etc."></textarea>
+            </div>
+
+            <div class="action-row">
+              <button type="submit" class="btn btn-primary">Valider cette étape</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 14. INTER-BLOCK PAUSE / TRANSITION SCREEN -->
+      <!-- ======================================================== -->
+      <section id="screen-interblock" class="screen">
+        <div class="card">
+          <div class="step-indicator" id="interblock-step-indicator">Pause entre les blocs</div>
+          <h1 id="interblock-title">Bloc 1 sur 3 complété !</h1>
+          <p class="subtitle">Excellent travail, les données de ce bloc ont été enregistrées avec succès.</p>
+
+          <div class="instruction-box">
+            <p class="large-text">Prenez une courte pause de quelques instants pour reposer vos yeux et votre attention.</p>
+            <p id="interblock-message">Lorsque vous êtes prêt à continuer vers le bloc suivant, cliquez sur le bouton ci-dessous pour découvrir la nouvelle modalité.</p>
+          </div>
+
+          <div class="action-row">
+            <button type="button" id="btn-next-block" class="btn btn-primary btn-lg">Passer au bloc suivant</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- ======================================================== -->
+      <!-- 15. POST-TEST RANKING SCREEN (Participant only)          -->
+      <!-- ======================================================== -->
+      <section id="screen-ranking" class="screen">
+        <div class="card">
+          <div class="step-indicator">Fin de l'expérience — Évaluation globale</div>
+          <h1>Classement général de vos préférences</h1>
+          <p class="subtitle">Vous venez d'expérimenter les trois modalités de relecture. Veuillez maintenant indiquer votre ordre de préférence globale :</p>
+          <hr>
+
+          <form id="ranking-form">
+            <div class="ranking-row">
+              <label for="pref-1"><strong>1ère place (La plus préférée) :</strong></label>
+              <select id="pref-1" class="form-control" required>
+                <option value="" disabled selected>-- Sélectionnez votre modalité préférée --</option>
+                <option value="SIL">Lecture silencieuse</option>
+                <option value="HAUTE">Lecture à voix haute</option>
+                <option value="TTS">TTS bimodal (synthèse vocale + écran)</option>
+              </select>
+            </div>
+
+            <div class="ranking-row">
+              <label for="pref-2"><strong>2e place (Intermédiaire) :</strong></label>
+              <select id="pref-2" class="form-control" required>
+                <option value="" disabled selected>-- Sélectionnez votre modalité intermédiaire --</option>
+                <option value="SIL">Lecture silencieuse</option>
+                <option value="HAUTE">Lecture à voix haute</option>
+                <option value="TTS">TTS bimodal (synthèse vocale + écran)</option>
+              </select>
+            </div>
+
+            <div class="ranking-row">
+              <label for="pref-3"><strong>3e place (La moins préférée) :</strong></label>
+              <select id="pref-3" class="form-control" required>
+                <option value="" disabled selected>-- Sélectionnez votre modalité la moins préférée --</option>
+                <option value="SIL">Lecture silencieuse</option>
+                <option value="HAUTE">Lecture à voix haute</option>
+                <option value="TTS">TTS bimodal (synthèse vocale + écran)</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin-top: 20px;">
+              <label for="pref-comments"><strong>Commentaire global / Justification du classement (optionnel) :</strong></label>
+              <textarea id="pref-comments" class="form-control" rows="3" placeholder="Pourquoi ce classement ? Ex: fatigue vocale, confort de lecture, aide au repérage d'erreurs, etc."></textarea>
+            </div>
+
+            <div id="ranking-error-msg" class="info-box hidden" style="border-left-color: #d9534f; color: #a94442; background-color: #fdf2f2; margin-top: 15px;">
+              Veuillez sélectionner une modalité différente pour chaque position (1ère, 2e et 3e place).
+            </div>
+
+            <div class="action-row" style="margin-top: 20px;">
+              <button type="submit" id="btn-save-ranking" class="btn btn-primary">Valider mon classement</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 16. FINAL DEBRIEF & EXPERIMENTER EXPORT SCREEN           -->
+      <!-- ======================================================== -->
+      <section id="screen-finish" class="screen">
+        <div class="card">
+          <div class="step-indicator">Synthèse de session & Clôture</div>
+          <h1>Passation expérimentale terminée</h1>
+          <p class="subtitle">Toutes les étapes ont été complétées avec succès pour ce participant. Merci beaucoup !</p>
+          <hr>
+
+          <div id="ranking-recap-box" class="info-box" style="margin-bottom: 20px;">
+            <strong>Classement enregistré du participant :</strong>
+            <p id="ranking-recap-text" style="margin-top: 5px; margin-bottom: 0;">(Enregistrement en cours...)</p>
+          </div>
+
+          <!-- Experimenter Results Summary Table -->
+          <h3>Rapport de session (Pour l'expérimentateur)</h3>
+          <div class="table-container">
+            <table id="summary-table" class="data-table">
+              <thead>
+                <tr>
+                  <th>Bloc</th>
+                  <th>Modalité</th>
+                  <th>Texte</th>
+                  <th>Temps (s)</th>
+                  <th>Erreurs détectées (VP / 6)</th>
+                  <th>Faux Positifs (FP)</th>
+                  <th>Taux détection</th>
+                  <th>Quiz rétention (/3)</th>
+                  <th>Agréabilité</th>
+                  <th>Effort</th>
+                </tr>
+              </thead>
+              <tbody id="summary-table-body">
+                <!-- Injected dynamically -->
+              </tbody>
+            </table>
+          </div>
+
+          <hr>
+
+          <!-- Post-Interview Section (Optionnel / Pour notes de l'expérimentateur) -->
+          <details class="interview-section" style="margin-bottom: 20px;">
+            <summary style="cursor: pointer; font-weight: 600; padding: 10px 0; color: #111111;">
+              🎤 Notes d'entrevue post-expérience (6 questions Nagano — Dictaphone ou saisie)
+            </summary>
+            <p class="help-text" style="margin-top: 8px;">
+              L'entrevue est menée à l'oral avec dictaphone selon le guide <code>interview.md</code>. Si vous souhaitez consigner vos notes directement dans le fichier CSV et JSON du participant, vous pouvez remplir ce formulaire :
+            </p>
+
+            <div class="interview-card">
+              <label for="intw-q1"><strong>1. Habitudes de révision :</strong> Comment avez-vous l'habitude de réviser vos textes ? Quelles méthodes ou routines ?</label>
+              <textarea id="intw-q1" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
+            </div>
+
+            <div class="interview-card">
+              <label for="intw-q2"><strong>2. Usage passé du TTS :</strong> Aviez-vous déjà utilisé des outils de synthèse vocale (text-to-speech) ?</label>
+              <textarea id="intw-q2" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
+            </div>
+
+            <div class="interview-card">
+              <label for="intw-q3"><strong>3. Avantages et inconvénients :</strong> Quels avantages et inconvénients voyez-vous pour chacune des trois méthodes ?</label>
+              <textarea id="intw-q3" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
+            </div>
+
+            <div class="interview-card">
+              <label for="intw-q4"><strong>4. Modalité démarquée :</strong> Y en a-t-il une qui s'est démarquée positivement ou négativement, et pourquoi ?</label>
+              <textarea id="intw-q4" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
+            </div>
+
+            <div class="interview-card">
+              <label for="intw-q5"><strong>5. Complexité des textes :</strong> Parmi les textes proposés, certains vous ont-ils paru plus simples ou plus complexes ?</label>
+              <textarea id="intw-q5" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
+            </div>
+
+            <div class="interview-card">
+              <label for="intw-q6"><strong>6. Remarques libres :</strong> Quelque chose à ajouter ou à préciser sur votre expérience ?</label>
+              <textarea id="intw-q6" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
+            </div>
+
+            <div class="action-row" style="margin-top: 10px;">
+              <button type="button" id="btn-save-interview" class="btn btn-primary">Enregistrer les notes d'entrevue dans le CSV/JSON</button>
+              <span id="interview-save-status" class="status-msg"></span>
+            </div>
+          </details>
+
+          <hr>
+
+          <div id="save-confirmation-box" class="info-box">
+            <p><strong>Sauvegarde automatique :</strong> Les données de cette session sont enregistrées dans <code>data_output/raw_json/session_PXX.json</code> et consolidées dans <code>data_output/csv/all_participants_summary.csv</code> ainsi que dans la mémoire locale (<code>localStorage</code>).</p>
+            <p class="help-text" style="margin-bottom: 0;">Vous pouvez également télécharger manuellement une copie directe des fichiers :</p>
+          </div>
+
+          <!-- Export Actions -->
+          <div class="action-row export-buttons">
+            <button type="button" id="btn-download-json" class="btn btn-primary">Télécharger le JSON brut</button>
+            <button type="button" id="btn-download-csv" class="btn btn-primary">Télécharger le CSV participant</button>
+            <button type="button" id="btn-reset-session" class="btn btn-secondary">Nouveau participant</button>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer id="main-footer">
+      <div class="footer-content">
+        <span>IFT 6075 — Université de Montréal | Prototype d'expérimentation IHM</span>
+        <span id="footer-status">Prêt</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <script src="data/data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

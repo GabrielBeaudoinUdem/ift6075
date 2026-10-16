@@ -1,0 +1,130 @@
+import json
+
+# Mathematically balanced Graeco-Latin square for 12 participants
+# 3 conditions: SIL (silencieuse), HAUTE (voix haute), TTS (TTS bimodal)
+# 3 texts: text1, text2, text3
+
+participants_config = [
+    {
+        "participant_id": "P01",
+        "condition_order": ["SIL", "HAUTE", "TTS"],
+        "text_order": ["text3", "text2", "text1"]
+    },
+    {
+        "participant_id": "P02",
+        "condition_order": ["SIL", "TTS", "HAUTE"],
+        "text_order": ["text2", "text1", "text3"]
+    },
+    {
+        "participant_id": "P03",
+        "condition_order": ["HAUTE", "SIL", "TTS"],
+        "text_order": ["text1", "text2", "text3"]
+    },
+    {
+        "participant_id": "P04",
+        "condition_order": ["HAUTE", "TTS", "SIL"],
+        "text_order": ["text1", "text3", "text2"]
+    },
+    {
+        "participant_id": "P05",
+        "condition_order": ["TTS", "SIL", "HAUTE"],
+        "text_order": ["text1", "text2", "text3"]
+    },
+    {
+        "participant_id": "P06",
+        "condition_order": ["TTS", "HAUTE", "SIL"],
+        "text_order": ["text2", "text3", "text1"]
+    },
+    {
+        "participant_id": "P07",
+        "condition_order": ["SIL", "HAUTE", "TTS"],
+        "text_order": ["text3", "text1", "text2"]
+    },
+    {
+        "participant_id": "P08",
+        "condition_order": ["SIL", "TTS", "HAUTE"],
+        "text_order": ["text1", "text3", "text2"]
+    },
+    {
+        "participant_id": "P09",
+        "condition_order": ["HAUTE", "SIL", "TTS"],
+        "text_order": ["text2", "text3", "text1"]
+    },
+    {
+        "participant_id": "P10",
+        "condition_order": ["HAUTE", "TTS", "SIL"],
+        "text_order": ["text3", "text2", "text1"]
+    },
+    {
+        "participant_id": "P11",
+        "condition_order": ["TTS", "SIL", "HAUTE"],
+        "text_order": ["text3", "text1", "text2"]
+    },
+    {
+        "participant_id": "P12",
+        "condition_order": ["TTS", "HAUTE", "SIL"],
+        "text_order": ["text2", "text1", "text3"]
+    }
+]
+
+conditions_meta = {
+    "SIL": {
+        "id": "SIL",
+        "name": "Lecture silencieuse",
+        "short_desc": "Lecture visuelle sans oralisation à votre propre rythme",
+        "instructions": (
+            "Consigne pour cette étape : Lisez attentivement le texte affiché à l'écran de manière silencieuse (dans votre tête), "
+            "à votre rythme habituel de relecture. Lorsque vous repérez une erreur (mot en trop, coquille, faute d'accord ou de grammaire), "
+            "cliquez directement sur le mot erroné pour le sélectionner. Une fois la lecture terminée, cliquez sur le bouton 'Terminer la relecture'."
+        ),
+        "tts_active": False
+    },
+    "HAUTE": {
+        "id": "HAUTE",
+        "name": "Lecture à voix haute",
+        "short_desc": "Lecture à voix haute et continue du texte",
+        "instructions": (
+            "Consigne pour cette étape : Lisez le texte affiché à l'écran à voix haute de manière claire, continue et à un volume normal. "
+            "Lorsque vous repérez une erreur (mot en trop, coquille, faute d'accord ou de grammaire), cliquez directement sur le mot erroné avec la souris "
+            "sans interrompre votre lecture plus que nécessaire. Une fois la lecture terminée, cliquez sur le bouton 'Terminer la relecture'."
+        ),
+        "tts_active": False
+    },
+    "TTS": {
+        "id": "TTS",
+        "name": "TTS bimodal (Synthèse vocale + Écran)",
+        "short_desc": "Écoute au casque synchronisée avec le texte à l'écran",
+        "instructions": (
+            "Consigne pour cette étape : Mettez vos écouteurs sur les oreilles. Le texte sera lu à voix haute par la synthèse vocale "
+            "à un rythme régulier. Suivez attentivement le texte des yeux à l'écran en même temps que la voix. Dès que vous entendez ou voyez une erreur "
+            "(mot en double, coquille, faute d'accord), cliquez directement sur le mot erroné avec la souris. Une fois la lecture terminée, cliquez sur 'Terminer la relecture'."
+        ),
+        "tts_active": True
+    }
+}
+
+full_data = {
+    "metadata": {
+        "experiment_title": "Étude IFT 6075 — Évaluation des modalités de relecture (Silencieuse, Voix haute, TTS bimodal)",
+        "participants_count": 12,
+        "conditions_count": 3,
+        "texts_count": 3,
+        "counterbalancing_type": "Graeco-Latin Square (orthogonal balance Condition x Text x Order)",
+        "marginal_counts": {
+            "each_condition_per_position": 4,
+            "each_text_per_position": 4,
+            "each_condition_per_text": 4
+        }
+    },
+    "conditions": conditions_meta,
+    "participants": participants_config
+}
+
+import os
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_FILE = os.path.join(SCRIPT_DIR, "data", "latin_square.json")
+
+with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+    json.dump(full_data, f, ensure_ascii=False, indent=2)
+
+print(f"Generated {OUTPUT_FILE} successfully!")
