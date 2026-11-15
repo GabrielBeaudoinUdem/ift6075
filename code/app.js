@@ -233,7 +233,7 @@
   };
 
   function escapeHtml(str) {
-    return String(str || '')
+    return String(str !== null && str !== undefined ? str : '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
@@ -307,11 +307,11 @@
       } else if (window.location.protocol !== 'file:') {
         serverStatusBanner.className = 'info-box status-banner-info';
         serverStatusBanner.innerHTML =
-          '<strong>Mode en ligne (hébergement statique / GitHub Pages) :</strong> aucune donnée n\'est envoyée sur Internet. Les logs (<code>session_PXX.json</code> et <code>summary_PXX.csv</code>) restent 100 % locaux et seront téléchargés automatiquement sur cet ordinateur à la fin de la session.';
+          '<strong>Mode en ligne (hébergement statique / GitHub Pages) :</strong> aucune donnée n\'est envoyée sur Internet. Le fichier complet (<code>session_PXX.json</code>) reste 100 % local et sera téléchargé automatiquement à la fin de l\'entrevue (avec export CSV en 1 clic).';
       } else {
         serverStatusBanner.className = 'info-box status-banner-warn';
         serverStatusBanner.innerHTML =
-          '<strong>Mode fichier local (<code>file://</code>) :</strong> la session reste sauvegardée dans le navigateur (<code>localStorage</code>) et téléchargera les logs en JSON/CSV à la fin. Pour l\'écriture automatique dans <code>data_output/</code>, lancez <code>Lancer_Experience.command</code> (ou <code>python3 server.py</code>).';
+          '<strong>Mode fichier local (<code>file://</code>) :</strong> la session reste sauvegardée dans le navigateur (<code>localStorage</code>) et téléchargera <code>session_PXX.json</code> à la fin. Pour l\'écriture automatique dans <code>data_output/</code>, lancez <code>Lancer_Experience.command</code> (ou <code>python3 server.py</code>).';
       }
     }
 
@@ -1878,7 +1878,7 @@
 
     let offlineDownloaded = false;
     if (!isServerConnected) {
-      downloadSessionLogs();
+      downloadJsonData();
       offlineDownloaded = true;
     }
 
@@ -1922,12 +1922,7 @@
 
   function getOfflineSaveDetailHtml(pid) {
     const safePid = escapeHtml(pid || 'PXX');
-    return `Mode sans serveur (données 100 % locales, aucun envoi réseau) : vérifiez le dossier <em>Téléchargements</em> pour <code>session_${safePid}.json</code> et <code>summary_${safePid}.csv</code>. Si le navigateur demande d'autoriser les téléchargements multiples pour le CSV, cliquez sur « Autoriser », ou utilisez les boutons de téléchargement ci-dessous.`;
-  }
-
-  function downloadSessionLogs() {
-    downloadJsonData();
-    downloadCsvData();
+    return `Mode sans serveur (données 100 % locales, aucun envoi réseau) : vérifiez le dossier <em>Téléchargements</em> pour <code>session_${safePid}.json</code> (données complètes). Pour exporter également le tableau <code>summary_${safePid}.csv</code> tout de suite, cliquez sur « Télécharger le résumé (CSV — ${safePid}) » ci-dessous.`;
   }
 
   async function autoSaveSession(options = {}) {
@@ -1950,7 +1945,7 @@
       // 2. Sans serveur local (ex. GitHub Pages ou file://), ne pas appeler /api/save
       if (!isServerConnected) {
         footerStatus.textContent = downloadedOffline
-          ? `Logs JSON/CSV téléchargés (${selectedParticipant})`
+          ? `Log complet téléchargé : session_${selectedParticipant}.json`
           : `Sauvegarde locale OK (${selectedParticipant})`;
         const hasFinished = Boolean(
           sessionData.final_ranking &&
@@ -1958,10 +1953,10 @@
           sessionData.interview_completed
         );
         const statusMsg = downloadedOffline
-          ? `<strong>Téléchargement automatique déclenché :</strong> <code>session_${pidCode}.json</code> et <code>summary_${pidCode}.csv</code> enregistrés sur cet ordinateur (et sauvegardés dans le navigateur).`
+          ? `<strong>Téléchargement automatique réussi :</strong> <code>session_${pidCode}.json</code> (données complètes du test) enregistré sur cet ordinateur et sauvegardé dans le navigateur.`
           : hasFinished
             ? `<strong>Sauvegarde locale mise à jour (<code>localStorage</code>) :</strong> utilisez les boutons ci-dessous pour télécharger les données complètes à jour.`
-            : `<strong>Mode sans serveur (local) :</strong> session sauvegardée dans le navigateur (<code>localStorage</code>). Les fichiers JSON et CSV complets seront téléchargés automatiquement après l'entrevue.`;
+            : `<strong>Mode sans serveur (local) :</strong> session sauvegardée dans le navigateur (<code>localStorage</code>). Le fichier complet <code>session_${pidCode}.json</code> sera téléchargé automatiquement après l'entrevue.`;
         updateFinalSaveDisplay(statusMsg, getOfflineSaveDetailHtml(selectedParticipant));
         return;
       }

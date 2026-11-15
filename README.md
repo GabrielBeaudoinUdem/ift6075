@@ -28,7 +28,7 @@ Guide d'utilisation concis pour lancer l'expérience, modifier les textes ou les
   2. Ouvrez ensuite **`https://gabrielbeaudoinudem.github.io/ift6075/`** dans Google Chrome (redirige automatiquement vers `/code/`).
 - **Fonctionnement en ligne :**
   - L'application détecte automatiquement l'hébergement statique `.github.io` (bandeau bleu *« Mode en ligne (hébergement statique / GitHub Pages) »*) et n'envoie **aucune** donnée sur Internet (conforme aux exigences locales CERSES).
-  - À la fin de l'étape d'entrevue post-expérience, les fichiers complets `session_PXX.json` et `summary_PXX.csv` se téléchargent automatiquement sur l'ordinateur utilisé (autorisez les téléchargements multiples si Chrome le demande), et des boutons sur l'écran final permettent aussi d'exporter toutes les sessions enregistrées dans ce navigateur (`all_sessions_complete_browser.json` et `all_participants_summary_browser.csv`).
+  - À la fin de l'étape d'entrevue post-expérience, le fichier complet `session_PXX.json` se télécharge automatiquement sur l'ordinateur utilisé (sans bloquer sur une alerte de téléchargements multiples), et des boutons sur l'écran final permettent d'exporter en un clic le CSV individuel (`summary_PXX.csv`) ou toutes les sessions enregistrées dans ce navigateur (`all_sessions_complete_browser.json` et `all_participants_summary_browser.csv`).
   - Pour rassembler les logs collectés sur plusieurs ordinateurs dans [`data_output/csv/all_participants_summary.csv`](data_output/csv/all_participants_summary.csv), copiez vos `session_PXX.json` ou `all_sessions_complete_browser.json` dans `data_output/raw_json/` (ou passez leur dossier en argument) et exécutez :
     ```bash
     python3 merge_logs.py
