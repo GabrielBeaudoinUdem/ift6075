@@ -1,3 +1,6 @@
 .DS_Store
 __pycache__/
 *.pyc
+data_output/raw_json/session_*.json
+data_output/raw_json/backups/*.json
+data_output/csv/summary_*.csv

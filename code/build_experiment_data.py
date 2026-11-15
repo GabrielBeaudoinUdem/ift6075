@@ -176,7 +176,7 @@ text1 = {
 
 # Text 2 (~300 words, 6 errors: 3 surface, 3 grammar)
 # Surface: "avec avec", "la la", "contre contre"
-# Grammar: "les engrenages devait" (sujet pluriel), "les écarts thermique" (écarts pluriel), "le défi était immenses" (défi singulier)
+# Grammar: "les écarts thermique" (muet), "La commande était urgent" (audible), "Les engrenages ... a fonctionné" (audible)
 text2 = {
     "id": "text2",
     "title": "L'horloger de la baie d'Ys",
@@ -188,9 +188,9 @@ text2 = {
         "à la fabrication de chronomètres de marine de haute précision. La navigation hauturière exigeait alors des instruments d'une "
         "régularité absolue pour déterminer la longitude en pleine mer. L'artisan travaillait depuis près de deux ans sur un mécanisme "
         "révolutionnaire doté d'un balancier bimétallique capable de compenser les écarts thermique. Un matin d'avril, un armateur influent "
-        "nommé Monsieur Le Bihan lui passa commande d'un appareil destiné à équiper la frégate L'Amphitrite. Le défi était immenses car "
+        "nommé Monsieur Le Bihan lui passa commande d'un appareil destiné à équiper la frégate L'Amphitrite. La commande était urgent car "
         "le bateau devait appareiller exactement trois semaines plus tard. Travaillant à la lueur des lampes à huile, Corentin ajustait chaque "
-        "rouage avec avec une patience infinie. Les engrenages en laiton poli devait s'emboîter sans le moindre frottement parasite. "
+        "rouage avec avec une patience infinie. Les engrenages en laiton poli a fonctionné sans le moindre frottement parasite. "
         "Pour protéger le balancier des mouvements de roulis, il conçut une suspension à cardan montée sur des ressorts amortisseurs. "
         "Durant les derniers jours précédant le départ, la fatigue commençait à peser lourdement sur le vieil artisan. Malgré l'épuisement, "
         "il a passé la la nuit entière à lubrifier les rubis synthétiques avec une huile fine de cétacé. Lorsque le jeune mousse est venu "
@@ -210,12 +210,12 @@ text2 = {
             "explanation": "L'adjectif 'thermique' qualifie le nom pluriel 'écarts' et doit prendre un 's' ('écarts thermiques')."
         },
         {
-            "token_match": "était immenses",
-            "error_word": "immenses",
+            "token_match": "était urgent",
+            "error_word": "urgent",
             "error_type": "grammaire",
-            "error_subtype": "accord_attribut_nombre",
-            "correction": "immense",
-            "explanation": "L'attribut 'immenses' se rapporte au sujet singulier 'Le défi' et doit être au singulier ('immense')."
+            "error_subtype": "accord_attribut_genre",
+            "correction": "urgente",
+            "explanation": "L'attribut 'urgent' se rapporte au sujet féminin singulier 'La commande' et doit s'accorder ('urgente')."
         },
         {
             "token_match": "avec avec",
@@ -227,12 +227,12 @@ text2 = {
             "explanation": "La préposition 'avec' est répétée deux fois consécutivement."
         },
         {
-            "token_match": "laiton poli devait",
-            "error_word": "devait",
+            "token_match": "a fonctionné",
+            "error_word": "a",
             "error_type": "grammaire",
             "error_subtype": "accord_sujet_verbe",
-            "correction": "devaient",
-            "explanation": "Le sujet est 'Les engrenages en laiton poli' (pluriel), le verbe doit être 'devaient'."
+            "correction": "ont fonctionné",
+            "explanation": "Le sujet est 'Les engrenages en laiton poli' (pluriel), le verbe doit être 'ont fonctionné'."
         },
         {
             "token_match": "la la nuit",
@@ -292,7 +292,7 @@ text2 = {
 
 # Text 3 (~300 words, 6 errors: 3 surface, 3 grammar)
 # Surface: "par par", "pour pour", "leurs leurs"
-# Grammar: "dépérissait" (sujet: Les cultures traditionnelles), "hermétiquement clos" (douze jarres -> closes), "inattendu" (Cette redécouverte -> inattendue)
+# Grammar: "dépérissait" (muet), "hermétiquement clos" (audible), "Les premières récoltes a confirmé" (audible)
 text3 = {
     "id": "text3",
     "title": "Les graines oubliées de Val-Serein",
@@ -312,8 +312,8 @@ text3 = {
         "de germination en serre pour pour tester la viabilité des graines centenaires. En moins de sept jours, les premières jeunes pousses "
         "sont sorties de terre avec une vigueur surprenante. Les plants ont démontré une résistance exceptionnelle au manque d'eau, consommant "
         "quarante pour cent moins de liquide que les variétés modernes. Pour accélérer la multiplication de ces céréales rustiques, les agriculteurs "
-        "voisins ont mis à disposition leurs leurs parcelles expérimentales. La première récolte a confirmé des rendements remarquables malgré "
-        "l'absence quasi totale de précipitations durant la saison estivale. Cette redécouverte agricole inattendu offre désormais un espoir "
+        "voisins ont mis à disposition leurs leurs parcelles expérimentales. Les premières récoltes a confirmé des rendements remarquables malgré "
+        "l'absence quasi totale de précipitations durant la saison estivale. Cette redécouverte agricole inattendue offre désormais un espoir "
         "concret pour restaurer la fertilité des terres asséchées face aux bouleversements climatiques."
     ),
     "errors": [
@@ -361,12 +361,12 @@ text3 = {
             "explanation": "Le déterminant possessif 'leurs' est répété deux fois consécutivement."
         },
         {
-            "token_match": "agricole inattendu",
-            "error_word": "inattendu",
+            "token_match": "a confirmé",
+            "error_word": "a",
             "error_type": "grammaire",
-            "error_subtype": "accord_adjectif_genre",
-            "correction": "inattendue",
-            "explanation": "L'adjectif se rapporte à 'Cette redécouverte' (féminin singulier) et doit s'écrire 'inattendue'."
+            "error_subtype": "accord_sujet_verbe",
+            "correction": "ont confirmé",
+            "explanation": "Le sujet 'Les premières récoltes' est au pluriel, le verbe doit être 'ont confirmé'."
         }
     ],
     "quiz": [
@@ -447,8 +447,8 @@ def tokenize_and_tag(doc):
                     if is_double_word:
                         # For double words (e.g. "pour pour", "leur leur"), accept both words (i and i+1)
                         acceptable_indices = [i, i + 1]
-                    elif err.get("token_match") == "a travaillé" or err.get("acceptable_phrase") == "a travaillé":
-                        # For "a travaillé", accept either "a" or "travaillé" (both are part of the error)
+                    elif err.get("token_match") in ("a travaillé", "a fonctionné", "a confirmé") or err.get("acceptable_phrase") == "a travaillé":
+                        # For compound verb errors ("a travaillé", "a fonctionné", "a confirmé"), accept either auxiliary or participle
                         acceptable_indices = [i, i + 1]
                     elif err.get("target_occurrence") == 2:
                         acceptable_indices = [i + 1]

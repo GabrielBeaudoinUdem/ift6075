@@ -3316,7 +3316,7 @@
       "description": "Récit historique fictif sur la création artisanale d'un chronomètre de marine au XIXe siècle.",
       "isPractice": false,
       "wordCount": 297,
-      "rawText": "Au milieu du dix-neuvième siècle, le port maritime d'Ys vivait au rythme des départs de navires marchands naviguant vers les comptoirs d'Orient. Dans son modeste atelier en bordure des quais, Maître Corentin consacrait ses journées à la fabrication de chronomètres de marine de haute précision. La navigation hauturière exigeait alors des instruments d'une régularité absolue pour déterminer la longitude en pleine mer. L'artisan travaillait depuis près de deux ans sur un mécanisme révolutionnaire doté d'un balancier bimétallique capable de compenser les écarts thermique. Un matin d'avril, un armateur influent nommé Monsieur Le Bihan lui passa commande d'un appareil destiné à équiper la frégate L'Amphitrite. Le défi était immenses car le bateau devait appareiller exactement trois semaines plus tard. Travaillant à la lueur des lampes à huile, Corentin ajustait chaque rouage avec avec une patience infinie. Les engrenages en laiton poli devait s'emboîter sans le moindre frottement parasite. Pour protéger le balancier des mouvements de roulis, il conçut une suspension à cardan montée sur des ressorts amortisseurs. Durant les derniers jours précédant le départ, la fatigue commençait à peser lourdement sur le vieil artisan. Malgré l'épuisement, il a passé la la nuit entière à lubrifier les rubis synthétiques avec une huile fine de cétacé. Lorsque le jeune mousse est venu chercher le boîtier en bois d'acajou, l'horloger a vérifié une dernière fois la marche des aiguilles. Cependant, le mousse pressé a laissé glisser le boîtier contre contre la table d'ébénisterie, provoquant un léger claquement sourd. Fort heureusement, le mécanisme suspendu a amorti le choc sans subir le moindre dérèglement. Deux mois après la traversée, une lettre élogieuse est parvenue à l'atelier, confirmant la fiabilité remarquable de l'instrument en pleine tempête. Ce succès a définitivement établi la réputation de l'artisan auprès de tous les capitaines marchands de la province.",
+      "rawText": "Au milieu du dix-neuvième siècle, le port maritime d'Ys vivait au rythme des départs de navires marchands naviguant vers les comptoirs d'Orient. Dans son modeste atelier en bordure des quais, Maître Corentin consacrait ses journées à la fabrication de chronomètres de marine de haute précision. La navigation hauturière exigeait alors des instruments d'une régularité absolue pour déterminer la longitude en pleine mer. L'artisan travaillait depuis près de deux ans sur un mécanisme révolutionnaire doté d'un balancier bimétallique capable de compenser les écarts thermique. Un matin d'avril, un armateur influent nommé Monsieur Le Bihan lui passa commande d'un appareil destiné à équiper la frégate L'Amphitrite. La commande était urgent car le bateau devait appareiller exactement trois semaines plus tard. Travaillant à la lueur des lampes à huile, Corentin ajustait chaque rouage avec avec une patience infinie. Les engrenages en laiton poli a fonctionné sans le moindre frottement parasite. Pour protéger le balancier des mouvements de roulis, il conçut une suspension à cardan montée sur des ressorts amortisseurs. Durant les derniers jours précédant le départ, la fatigue commençait à peser lourdement sur le vieil artisan. Malgré l'épuisement, il a passé la la nuit entière à lubrifier les rubis synthétiques avec une huile fine de cétacé. Lorsque le jeune mousse est venu chercher le boîtier en bois d'acajou, l'horloger a vérifié une dernière fois la marche des aiguilles. Cependant, le mousse pressé a laissé glisser le boîtier contre contre la table d'ébénisterie, provoquant un léger claquement sourd. Fort heureusement, le mécanisme suspendu a amorti le choc sans subir le moindre dérèglement. Deux mois après la traversée, une lettre élogieuse est parvenue à l'atelier, confirmant la fiabilité remarquable de l'instrument en pleine tempête. Ce succès a définitivement établi la réputation de l'artisan auprès de tous les capitaines marchands de la province.",
       "tokens": [
         {
           "index": 0,
@@ -4161,16 +4161,16 @@
         },
         {
           "index": 104,
-          "raw": "Le",
-          "clean": "le",
+          "raw": "La",
+          "clean": "la",
           "is_error": false,
           "error_id": null,
           "error_data": null
         },
         {
           "index": 105,
-          "raw": "défi",
-          "clean": "défi",
+          "raw": "commande",
+          "clean": "commande",
           "is_error": false,
           "error_id": null,
           "error_data": null
@@ -4185,16 +4185,16 @@
         },
         {
           "index": 107,
-          "raw": "immenses",
-          "clean": "immenses",
+          "raw": "urgent",
+          "clean": "urgent",
           "is_error": true,
           "error_id": "text2_err_1",
           "error_data": {
             "error_id": "text2_err_1",
             "error_type": "grammaire",
-            "error_subtype": "accord_attribut_nombre",
-            "correction": "immense",
-            "explanation": "L'attribut 'immenses' se rapporte au sujet singulier 'Le défi' et doit être au singulier ('immense').",
+            "error_subtype": "accord_attribut_genre",
+            "correction": "urgente",
+            "explanation": "L'attribut 'urgent' se rapporte au sujet féminin singulier 'La commande' et doit s'accorder ('urgente').",
             "acceptable_indices": [
               107
             ]
@@ -4478,28 +4478,39 @@
         },
         {
           "index": 140,
-          "raw": "devait",
-          "clean": "devait",
+          "raw": "a",
+          "clean": "a",
           "is_error": true,
           "error_id": "text2_err_3",
           "error_data": {
             "error_id": "text2_err_3",
             "error_type": "grammaire",
             "error_subtype": "accord_sujet_verbe",
-            "correction": "devaient",
-            "explanation": "Le sujet est 'Les engrenages en laiton poli' (pluriel), le verbe doit être 'devaient'.",
+            "correction": "ont fonctionné",
+            "explanation": "Le sujet est 'Les engrenages en laiton poli' (pluriel), le verbe doit être 'ont fonctionné'.",
             "acceptable_indices": [
-              140
+              140,
+              141
             ]
           }
         },
         {
           "index": 141,
-          "raw": "s'emboîter",
-          "clean": "s'emboîter",
-          "is_error": false,
-          "error_id": null,
-          "error_data": null
+          "raw": "fonctionné",
+          "clean": "fonctionné",
+          "is_error": true,
+          "error_id": "text2_err_3",
+          "error_data": {
+            "error_id": "text2_err_3",
+            "error_type": "grammaire",
+            "error_subtype": "accord_sujet_verbe",
+            "correction": "ont fonctionné",
+            "explanation": "Le sujet est 'Les engrenages en laiton poli' (pluriel), le verbe doit être 'ont fonctionné'.",
+            "acceptable_indices": [
+              140,
+              141
+            ]
+          }
         },
         {
           "index": 142,
@@ -5806,15 +5817,15 @@
             107
           ],
           "words": [
-            "immenses"
+            "urgent"
           ],
           "clean_words": [
-            "immenses"
+            "urgent"
           ],
           "error_type": "grammaire",
-          "error_subtype": "accord_attribut_nombre",
-          "correction": "immense",
-          "explanation": "L'attribut 'immenses' se rapporte au sujet singulier 'Le défi' et doit être au singulier ('immense')."
+          "error_subtype": "accord_attribut_genre",
+          "correction": "urgente",
+          "explanation": "L'attribut 'urgent' se rapporte au sujet féminin singulier 'La commande' et doit s'accorder ('urgente')."
         },
         {
           "error_id": "text2_err_2",
@@ -5838,18 +5849,21 @@
         {
           "error_id": "text2_err_3",
           "token_indices": [
-            140
+            140,
+            141
           ],
           "words": [
-            "devait"
+            "a",
+            "fonctionné"
           ],
           "clean_words": [
-            "devait"
+            "a",
+            "fonctionné"
           ],
           "error_type": "grammaire",
           "error_subtype": "accord_sujet_verbe",
-          "correction": "devaient",
-          "explanation": "Le sujet est 'Les engrenages en laiton poli' (pluriel), le verbe doit être 'devaient'."
+          "correction": "ont fonctionné",
+          "explanation": "Le sujet est 'Les engrenages en laiton poli' (pluriel), le verbe doit être 'ont fonctionné'."
         },
         {
           "error_id": "text2_err_4",
@@ -5913,15 +5927,15 @@
             107
           ],
           "words": [
-            "immenses"
+            "urgent"
           ],
           "clean_words": [
-            "immenses"
+            "urgent"
           ],
           "error_type": "grammaire",
-          "error_subtype": "accord_attribut_nombre",
-          "correction": "immense",
-          "explanation": "L'attribut 'immenses' se rapporte au sujet singulier 'Le défi' et doit être au singulier ('immense')."
+          "error_subtype": "accord_attribut_genre",
+          "correction": "urgente",
+          "explanation": "L'attribut 'urgent' se rapporte au sujet féminin singulier 'La commande' et doit s'accorder ('urgente')."
         },
         {
           "error_id": "text2_err_2",
@@ -5945,18 +5959,21 @@
         {
           "error_id": "text2_err_3",
           "token_indices": [
-            140
+            140,
+            141
           ],
           "words": [
-            "devait"
+            "a",
+            "fonctionné"
           ],
           "clean_words": [
-            "devait"
+            "a",
+            "fonctionné"
           ],
           "error_type": "grammaire",
           "error_subtype": "accord_sujet_verbe",
-          "correction": "devaient",
-          "explanation": "Le sujet est 'Les engrenages en laiton poli' (pluriel), le verbe doit être 'devaient'."
+          "correction": "ont fonctionné",
+          "explanation": "Le sujet est 'Les engrenages en laiton poli' (pluriel), le verbe doit être 'ont fonctionné'."
         },
         {
           "error_id": "text2_err_4",
@@ -6039,7 +6056,7 @@
       "description": "Récit de recherche agronomique et archéologique sur la redécouverte de semences résilientes.",
       "isPractice": false,
       "wordCount": 288,
-      "rawText": "Dans une vallée aride et escarpée du sud du pays, le village de Val-Serein subissait depuis plusieurs étés des vagues de sécheresse sans précédent. Les cultures traditionnelles de céréales dépérissait sous un soleil implacable, menaçant l'équilibre économique de la communauté paysanne. C'est dans ce contexte difficile qu'une biologiste originaire du canton, le docteur Élise Mercier, a entrepris des fouilles dans les ruines d'un ancien prieuré abandonné depuis deux siècles. Selon les chroniques locales, les moines qui habitaient autrefois ces lieux parvenaient à récolter du blé même durant les pires canicules. Après trois semaines de recherches sous les voûtes effondrées, l'équipe a mis au jour une chambre souterraine scellée par par une lourde porte de chêne. À l'intérieur de cette cave obscure reposaient douze jarres en terre cuite hermétiquement clos par de la cire d'abeille. À l'ouverture de la première jarre, les scientifiques ont découvert des milliers de semences intactes, parfaitement conservées grâce à l'absence totale d'humidité. Des analyses préliminaires en laboratoire ont révélé qu'il s'agissait d'une variété ancienne d'épeautre possédant des racines particulièrement profondes. La biologiste a immédiatement lancé des essais de germination en serre pour pour tester la viabilité des graines centenaires. En moins de sept jours, les premières jeunes pousses sont sorties de terre avec une vigueur surprenante. Les plants ont démontré une résistance exceptionnelle au manque d'eau, consommant quarante pour cent moins de liquide que les variétés modernes. Pour accélérer la multiplication de ces céréales rustiques, les agriculteurs voisins ont mis à disposition leurs leurs parcelles expérimentales. La première récolte a confirmé des rendements remarquables malgré l'absence quasi totale de précipitations durant la saison estivale. Cette redécouverte agricole inattendu offre désormais un espoir concret pour restaurer la fertilité des terres asséchées face aux bouleversements climatiques.",
+      "rawText": "Dans une vallée aride et escarpée du sud du pays, le village de Val-Serein subissait depuis plusieurs étés des vagues de sécheresse sans précédent. Les cultures traditionnelles de céréales dépérissait sous un soleil implacable, menaçant l'équilibre économique de la communauté paysanne. C'est dans ce contexte difficile qu'une biologiste originaire du canton, le docteur Élise Mercier, a entrepris des fouilles dans les ruines d'un ancien prieuré abandonné depuis deux siècles. Selon les chroniques locales, les moines qui habitaient autrefois ces lieux parvenaient à récolter du blé même durant les pires canicules. Après trois semaines de recherches sous les voûtes effondrées, l'équipe a mis au jour une chambre souterraine scellée par par une lourde porte de chêne. À l'intérieur de cette cave obscure reposaient douze jarres en terre cuite hermétiquement clos par de la cire d'abeille. À l'ouverture de la première jarre, les scientifiques ont découvert des milliers de semences intactes, parfaitement conservées grâce à l'absence totale d'humidité. Des analyses préliminaires en laboratoire ont révélé qu'il s'agissait d'une variété ancienne d'épeautre possédant des racines particulièrement profondes. La biologiste a immédiatement lancé des essais de germination en serre pour pour tester la viabilité des graines centenaires. En moins de sept jours, les premières jeunes pousses sont sorties de terre avec une vigueur surprenante. Les plants ont démontré une résistance exceptionnelle au manque d'eau, consommant quarante pour cent moins de liquide que les variétés modernes. Pour accélérer la multiplication de ces céréales rustiques, les agriculteurs voisins ont mis à disposition leurs leurs parcelles expérimentales. Les premières récoltes a confirmé des rendements remarquables malgré l'absence quasi totale de précipitations durant la saison estivale. Cette redécouverte agricole inattendue offre désormais un espoir concret pour restaurer la fertilité des terres asséchées face aux bouleversements climatiques.",
       "tokens": [
         {
           "index": 0,
@@ -8121,24 +8138,24 @@
         },
         {
           "index": 250,
-          "raw": "La",
-          "clean": "la",
+          "raw": "Les",
+          "clean": "les",
           "is_error": false,
           "error_id": null,
           "error_data": null
         },
         {
           "index": 251,
-          "raw": "première",
-          "clean": "première",
+          "raw": "premières",
+          "clean": "premières",
           "is_error": false,
           "error_id": null,
           "error_data": null
         },
         {
           "index": 252,
-          "raw": "récolte",
-          "clean": "récolte",
+          "raw": "récoltes",
+          "clean": "récoltes",
           "is_error": false,
           "error_id": null,
           "error_data": null
@@ -8147,17 +8164,37 @@
           "index": 253,
           "raw": "a",
           "clean": "a",
-          "is_error": false,
-          "error_id": null,
-          "error_data": null
+          "is_error": true,
+          "error_id": "text3_err_5",
+          "error_data": {
+            "error_id": "text3_err_5",
+            "error_type": "grammaire",
+            "error_subtype": "accord_sujet_verbe",
+            "correction": "ont confirmé",
+            "explanation": "Le sujet 'Les premières récoltes' est au pluriel, le verbe doit être 'ont confirmé'.",
+            "acceptable_indices": [
+              253,
+              254
+            ]
+          }
         },
         {
           "index": 254,
           "raw": "confirmé",
           "clean": "confirmé",
-          "is_error": false,
-          "error_id": null,
-          "error_data": null
+          "is_error": true,
+          "error_id": "text3_err_5",
+          "error_data": {
+            "error_id": "text3_err_5",
+            "error_type": "grammaire",
+            "error_subtype": "accord_sujet_verbe",
+            "correction": "ont confirmé",
+            "explanation": "Le sujet 'Les premières récoltes' est au pluriel, le verbe doit être 'ont confirmé'.",
+            "acceptable_indices": [
+              253,
+              254
+            ]
+          }
         },
         {
           "index": 255,
@@ -8289,20 +8326,11 @@
         },
         {
           "index": 271,
-          "raw": "inattendu",
-          "clean": "inattendu",
-          "is_error": true,
-          "error_id": "text3_err_5",
-          "error_data": {
-            "error_id": "text3_err_5",
-            "error_type": "grammaire",
-            "error_subtype": "accord_adjectif_genre",
-            "correction": "inattendue",
-            "explanation": "L'adjectif se rapporte à 'Cette redécouverte' (féminin singulier) et doit s'écrire 'inattendue'.",
-            "acceptable_indices": [
-              271
-            ]
-          }
+          "raw": "inattendue",
+          "clean": "inattendue",
+          "is_error": false,
+          "error_id": null,
+          "error_data": null
         },
         {
           "index": 272,
@@ -8527,18 +8555,21 @@
         {
           "error_id": "text3_err_5",
           "token_indices": [
-            271
+            253,
+            254
           ],
           "words": [
-            "inattendu"
+            "a",
+            "confirmé"
           ],
           "clean_words": [
-            "inattendu"
+            "a",
+            "confirmé"
           ],
           "error_type": "grammaire",
-          "error_subtype": "accord_adjectif_genre",
-          "correction": "inattendue",
-          "explanation": "L'adjectif se rapporte à 'Cette redécouverte' (féminin singulier) et doit s'écrire 'inattendue'."
+          "error_subtype": "accord_sujet_verbe",
+          "correction": "ont confirmé",
+          "explanation": "Le sujet 'Les premières récoltes' est au pluriel, le verbe doit être 'ont confirmé'."
         }
       ],
       "errorsSummary": [
@@ -8634,18 +8665,21 @@
         {
           "error_id": "text3_err_5",
           "token_indices": [
-            271
+            253,
+            254
           ],
           "words": [
-            "inattendu"
+            "a",
+            "confirmé"
           ],
           "clean_words": [
-            "inattendu"
+            "a",
+            "confirmé"
           ],
           "error_type": "grammaire",
-          "error_subtype": "accord_adjectif_genre",
-          "correction": "inattendue",
-          "explanation": "L'adjectif se rapporte à 'Cette redécouverte' (féminin singulier) et doit s'écrire 'inattendue'."
+          "error_subtype": "accord_sujet_verbe",
+          "correction": "ont confirmé",
+          "explanation": "Le sujet 'Les premières récoltes' est au pluriel, le verbe doit être 'ont confirmé'."
         }
       ],
       "quiz": [

@@ -30,6 +30,8 @@
           <p class="subtitle">Sélectionnez le participant assigné selon le carré latin avant d'installer le participant.</p>
           <hr>
 
+          <div id="server-status-banner" class="info-box">Vérification de la connexion au serveur local...</div>
+
           <div class="form-group">
             <label for="select-participant"><strong>Numéro de participant (N = 12) :</strong></label>
             <select id="select-participant" class="form-control">
@@ -55,6 +57,15 @@
             <ul id="setup-order-list"></ul>
           </div>
 
+          <!-- Existing data warning & resume actions -->
+          <div id="existing-session-banner" class="warning-box hidden">
+            <p id="existing-session-msg" style="margin-bottom: 0;"></p>
+            <div class="action-row" style="margin-top: 10px;">
+              <button type="button" id="btn-resume-session" class="btn btn-primary hidden">Reprendre la session en cours</button>
+              <button type="button" id="btn-open-finish" class="btn btn-secondary hidden">Ouvrir la synthèse / notes d'entrevue</button>
+            </div>
+          </div>
+
           <div class="form-group">
             <label>
               <input type="checkbox" id="check-practice" checked>
@@ -65,7 +76,45 @@
           <hr>
 
           <div class="action-row">
-            <button type="button" id="btn-start-experiment" class="btn btn-primary" disabled>Continuer vers le questionnaire pré-condition</button>
+            <button type="button" id="btn-start-experiment" class="btn btn-primary" disabled>Suivant — Étape 1 : Consentement (FIC)</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 1B. CONSENT CHECKLIST SCREEN (FORMULAIRE D'ACCEPTATION)  -->
+      <!-- ======================================================== -->
+      <section id="screen-consent" class="screen">
+        <div class="card">
+          <div class="step-indicator">Étape 1 : Formulaire de consentement (Acceptation)</div>
+          <h1>Formulaire d'information et de consentement (FIC)</h1>
+          <p class="subtitle">Étape obligatoire avant de débuter la collecte — code attribué : <strong id="consent-participant-code">PXX</strong>.</p>
+          <hr>
+
+          <div class="instruction-box">
+            <h3>À effectuer avec le participant avant de continuer :</h3>
+            <ol class="guided-checklist">
+              <li>
+                <strong>Formulaire d'acceptation / consentement :</strong> Faire lire et <strong>signer</strong> le formulaire d'information et de consentement (FIC) en inscrivant le code identifiant <code id="consent-participant-code-inline">PXX</code>.
+              </li>
+              <li>
+                <strong>Préparation du matériel :</strong> Vérifier que le <strong>casque d'écoute</strong> et le <strong>dictaphone / enregistreur</strong> (pour la lecture à voix haute et l'entrevue finale) sont prêts.
+              </li>
+            </ol>
+          </div>
+
+          <div class="warning-box">
+            <label class="checkbox-confirm-label">
+              <input type="checkbox" id="check-consent-signed">
+              <span><strong>Confirmation expérimentateur :</strong> Le formulaire de consentement (FIC) a bien été lu, accepté et signé par le participant (<span id="consent-participant-code-confirm">PXX</span>).</span>
+            </label>
+          </div>
+
+          <hr>
+
+          <div class="action-row" style="justify-content: space-between;">
+            <button type="button" id="btn-consent-back" class="btn btn-secondary">← Retour à la configuration</button>
+            <button type="button" id="btn-consent-next" class="btn btn-primary btn-lg" disabled>Suivant — Questionnaire initial pré-condition</button>
           </div>
         </div>
       </section>
@@ -75,7 +124,7 @@
       <!-- ======================================================== -->
       <section id="screen-precondition" class="screen">
         <div class="card">
-          <div class="step-indicator">Étape 1 : Questionnaire Pré-Condition</div>
+          <div class="step-indicator">Étape 2 : Questionnaire Pré-Condition</div>
           <h1>Questionnaire Pré-Condition</h1>
           <p class="subtitle">Ce court questionnaire recueille des renseignements de cadrage avant de débuter les tâches de relecture.</p>
           <hr>
@@ -154,7 +203,7 @@
       <!-- ======================================================== -->
       <section id="screen-audio-calibration" class="screen">
         <div class="card">
-          <div class="step-indicator">Accueil & Préparation du matériel</div>
+          <div class="step-indicator">Étape 3 : Accueil & Réglage du matériel audio</div>
           <h1>Réglage du volume sonore et de la vitesse de lecture</h1>
           <p class="subtitle">Bienvenue ! Veuillez mettre votre casque d'écoute audio sur vos oreilles.</p>
           
@@ -192,17 +241,21 @@
               </div>
             </div>
 
-            <!-- Voice Selection -->
-            <div class="calibration-row">
-              <label for="select-tts-voice"><strong>3. Voix de synthèse française :</strong></label>
-              <select id="select-tts-voice" class="form-control" style="max-width: 340px;"></select>
-            </div>
-
             <!-- Audio Test Button -->
             <div class="calibration-row test-row">
               <button type="button" id="btn-test-tts" class="btn btn-secondary">Écouter un extrait de test au casque</button>
               <span id="tts-test-status" class="status-msg"></span>
             </div>
+
+            <!-- Voice Information (Fixed pre-recorded audio) -->
+            <details class="experimenter-voice-box">
+              <summary><strong>Voix audio active :</strong> <span id="tts-active-voice-label">Amélie [fr-CA] — Audio pré-enregistré (MP3)</span> <span class="help-text">(identique sur tous les ordinateurs)</span></summary>
+              <div class="calibration-row" style="margin-top: 10px;">
+                <p id="tts-voice-info" class="help-text" style="margin: 0;">
+                  Les lectures vocales utilisent des fichiers MP3 pré-enregistrés (voix <strong>Amélie [fr-CA]</strong>) stockés dans <code>audio/</code>. Chaque participant entend exactement la même voix et la même prononciation, quel que soit l'ordinateur ou le navigateur utilisé.
+                </p>
+              </div>
+            </details>
           </div>
 
           <div class="info-box">
@@ -230,7 +283,7 @@
             <h3>Consignes de la relecture :</h3>
             <p class="large-text">Vous allez lire un court texte de pratique (environ 65 mots). Dans ce texte, <strong>2 erreurs ont été insérées</strong> (par exemple un mot en double ou une faute d'accord).</p>
             <ul style="padding-left: 20px; margin-top: 8px; font-size: 15px; line-height: 1.8;">
-              <li><strong>Repérer une erreur :</strong> Dès que vous voyez une erreur, <strong>cliquez sur le mot</strong> avec la souris. Il deviendra surligné en rouge.</li>
+              <li><strong>Repérer une erreur :</strong> Dès que vous voyez une erreur, <strong>cliquez uniquement sur le mot erroné</strong> (un seul mot par erreur) avec la souris. Il deviendra surligné en rouge.</li>
               <li><strong>Annuler une sélection :</strong> Si vous avez cliqué sur un mot par inadvertance, <strong>recliquez dessus</strong> pour le désélectionner.</li>
               <li><strong>Validation :</strong> Lorsque vous avez terminé votre relecture, cliquez sur le bouton <em>« Terminer l'entraînement »</em> en bas de page.</li>
               <li><strong>Compréhension :</strong> Vous répondrez ensuite à 2 questions à choix multiples pour tester le format du questionnaire.</li>
@@ -331,7 +384,7 @@
               <li><strong>Lecture à voix haute :</strong> Vous lisez à voix haute de manière claire et continue.</li>
               <li><strong>Lecture assistée par synthèse vocale (TTS) :</strong> Vous écoutez le texte au casque pendant que vous le suivez des yeux.</li>
             </ul>
-            <p style="margin-top: 10px;">Avant chaque texte, un écran de consigne vous indiquera quelle modalité adopter. Dans chaque texte, il y aura <strong>exactement 6 erreurs</strong> à repérer.</p>
+            <p style="margin-top: 10px;">Avant chaque texte, un écran de consigne vous indiquera quelle modalité adopter. Cliquez simplement sur chaque erreur que vous repérez au fil de votre lecture.</p>
           </div>
 
           <div class="action-row">
@@ -358,7 +411,7 @@
           </div>
 
           <div class="info-box">
-            <p><strong>Rappel :</strong> Dès que vous voyez une erreur, cliquez sur le mot pour le marquer en rouge (recliquez pour annuler). Lisez à votre rythme habituel de relecture. Dès que vous avez terminé votre lecture, cliquez sur <em>« Terminer la relecture »</em> au bas de la page.</p>
+            <p><strong>Rappel :</strong> Dès que vous voyez une erreur, cliquez uniquement sur le mot erroné (un seul mot par erreur) pour le marquer en rouge (recliquez pour annuler). Lisez à votre rythme habituel de relecture. Dès que vous avez terminé votre lecture, cliquez sur <em>« Terminer la relecture »</em> au bas de la page.</p>
           </div>
 
           <div class="action-row">
@@ -377,7 +430,7 @@
               <span class="block-tag" id="trial-block-tag">Bloc 1/3</span>
               <span class="condition-tag" id="trial-condition-tag">Modalité</span>
             </div>
-            <div class="timer-display" id="trial-timer">Temps : 00:00</div>
+            <div class="timer-display hidden" id="trial-timer" aria-hidden="true">Temps : 00:00</div>
           </div>
 
           <!-- TTS Player Controls with adjustable live speed -->
@@ -610,104 +663,169 @@
       </section>
 
       <!-- ======================================================== -->
-      <!-- 16. FINAL DEBRIEF & EXPERIMENTER EXPORT SCREEN           -->
+      <!-- 16. GUIDED INTERVIEW STEP (BEFORE FINAL RESULTS/EXPORT)  -->
       <!-- ======================================================== -->
-      <section id="screen-finish" class="screen">
+      <section id="screen-interview-guide" class="screen">
         <div class="card">
-          <div class="step-indicator">Synthèse de session & Clôture</div>
-          <h1>Passation expérimentale terminée</h1>
-          <p class="subtitle">Toutes les étapes ont été complétées avec succès pour ce participant. Merci beaucoup !</p>
-          <hr>
+          <div class="step-indicator">Étape finale : Entrevue post-expérience (~5 min)</div>
+          <h1>Entrevue orale avec le participant (<span id="interview-participant-code">PXX</span>)</h1>
+          <p class="subtitle">La partie à l'ordinateur est terminée. Réalisez maintenant l'entrevue avec votre document guide avant d'afficher les résultats et de clôturer le test.</p>
 
-          <div id="ranking-recap-box" class="info-box" style="margin-bottom: 20px;">
-            <strong>Classement enregistré du participant :</strong>
-            <p id="ranking-recap-text" style="margin-top: 5px; margin-bottom: 0;">(Enregistrement en cours...)</p>
+          <div class="instruction-box">
+            <h3>À faire avant de cliquer sur Suivant :</h3>
+            <ol class="guided-checklist">
+              <li><strong>Démarrer le dictaphone / enregistreur</strong> (en mentionnant le code participant <code id="interview-participant-code-inline">PXX</code>).</li>
+              <li><strong>Mener l'entrevue semi-dirigée</strong> à l'aide de votre document guide (<code>interview.md</code> / <code>Guide_Entrevue.pdf</code>). Rappel des 6 questions :
+                <ul style="padding-left: 18px; margin-top: 6px; font-size: 14px; line-height: 1.6;">
+                  <li><strong>Q1 :</strong> Habitudes générales de révision de textes (méthodes, routines).</li>
+                  <li><strong>Q2 :</strong> Usage passé d'outils de synthèse vocale (text-to-speech).</li>
+                  <li><strong>Q3 :</strong> Avantages et inconvénients perçus pour chacune des trois modalités.</li>
+                  <li><strong>Q4 :</strong> Une modalité s'est-elle démarquée positivement ou négativement, et pourquoi ?</li>
+                  <li><strong>Q5 :</strong> Certains textes ont-ils paru plus simples ou plus complexes que d'autres ?</li>
+                  <li><strong>Q6 :</strong> Remarques libres ou précisions supplémentaires sur l'expérience.</li>
+                </ul>
+              </li>
+            </ol>
           </div>
 
-          <!-- Experimenter Results Summary Table -->
-          <h3>Rapport de session (Pour l'expérimentateur)</h3>
-          <div class="table-container">
-            <table id="summary-table" class="data-table">
-              <thead>
-                <tr>
-                  <th>Bloc</th>
-                  <th>Modalité</th>
-                  <th>Texte</th>
-                  <th>Temps (s)</th>
-                  <th>Erreurs détectées (VP / 6)</th>
-                  <th>Faux Positifs (FP)</th>
-                  <th>Taux détection</th>
-                  <th>Quiz rétention (/3)</th>
-                  <th>Agréabilité</th>
-                  <th>Effort</th>
-                </tr>
-              </thead>
-              <tbody id="summary-table-body">
-                <!-- Injected dynamically -->
-              </tbody>
-            </table>
-          </div>
-
-          <hr>
-
-          <!-- Post-Interview Section (Optionnel / Pour notes de l'expérimentateur) -->
-          <details class="interview-section" style="margin-bottom: 20px;">
-            <summary style="cursor: pointer; font-weight: 600; padding: 10px 0; color: #111111;">
-              🎤 Notes d'entrevue post-expérience (6 questions Nagano — Dictaphone ou saisie)
+          <!-- Optional notes box (collapsed by default; keeps scores hidden to avoid interview bias) -->
+          <details id="interview-notes-details" class="experimenter-panel" style="margin-top: 16px;">
+            <summary class="experimenter-panel-summary">
+              Optionnel — Saisir des notes d'entrevue dans l'application (incluses dans le JSON/CSV)
             </summary>
-            <p class="help-text" style="margin-top: 8px;">
-              L'entrevue est menée à l'oral avec dictaphone selon le guide <code>interview.md</code>. Si vous souhaitez consigner vos notes directement dans le fichier CSV et JSON du participant, vous pouvez remplir ce formulaire :
-            </p>
 
-            <div class="interview-card">
-              <label for="intw-q1"><strong>1. Habitudes de révision :</strong> Comment avez-vous l'habitude de réviser vos textes ? Quelles méthodes ou routines ?</label>
-              <textarea id="intw-q1" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
-            </div>
+            <div class="experimenter-panel-body">
+              <p class="help-text" style="margin-top: 0;">
+                Si vous notez directement sur votre document papier ou votre dictaphone, laissez cette section fermée et cochez simplement la confirmation ci-dessous.
+              </p>
 
-            <div class="interview-card">
-              <label for="intw-q2"><strong>2. Usage passé du TTS :</strong> Aviez-vous déjà utilisé des outils de synthèse vocale (text-to-speech) ?</label>
-              <textarea id="intw-q2" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
-            </div>
+              <div class="interview-card">
+                <label for="intw-q1"><strong>1. Habitudes de révision :</strong> Comment avez-vous l'habitude de réviser vos textes ? Quelles méthodes ou routines ?</label>
+                <textarea id="intw-q1" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
+              </div>
 
-            <div class="interview-card">
-              <label for="intw-q3"><strong>3. Avantages et inconvénients :</strong> Quels avantages et inconvénients voyez-vous pour chacune des trois méthodes ?</label>
-              <textarea id="intw-q3" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
-            </div>
+              <div class="interview-card">
+                <label for="intw-q2"><strong>2. Usage passé du TTS :</strong> Aviez-vous déjà utilisé des outils de synthèse vocale (text-to-speech) ?</label>
+                <textarea id="intw-q2" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
+              </div>
 
-            <div class="interview-card">
-              <label for="intw-q4"><strong>4. Modalité démarquée :</strong> Y en a-t-il une qui s'est démarquée positivement ou négativement, et pourquoi ?</label>
-              <textarea id="intw-q4" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
-            </div>
+              <div class="interview-card">
+                <label for="intw-q3"><strong>3. Avantages et inconvénients :</strong> Quels avantages et inconvénients voyez-vous pour chacune des trois méthodes ?</label>
+                <textarea id="intw-q3" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
+              </div>
 
-            <div class="interview-card">
-              <label for="intw-q5"><strong>5. Complexité des textes :</strong> Parmi les textes proposés, certains vous ont-ils paru plus simples ou plus complexes ?</label>
-              <textarea id="intw-q5" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
-            </div>
+              <div class="interview-card">
+                <label for="intw-q4"><strong>4. Modalité démarquée :</strong> Y en a-t-il une qui s'est démarquée positivement ou négativement, et pourquoi ?</label>
+                <textarea id="intw-q4" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
+              </div>
 
-            <div class="interview-card">
-              <label for="intw-q6"><strong>6. Remarques libres :</strong> Quelque chose à ajouter ou à préciser sur votre expérience ?</label>
-              <textarea id="intw-q6" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
-            </div>
+              <div class="interview-card">
+                <label for="intw-q5"><strong>5. Complexité des textes :</strong> Parmi les textes proposés, certains vous ont-ils paru plus simples ou plus complexes ?</label>
+                <textarea id="intw-q5" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
+              </div>
 
-            <div class="action-row" style="margin-top: 10px;">
-              <button type="button" id="btn-save-interview" class="btn btn-primary">Enregistrer les notes d'entrevue dans le CSV/JSON</button>
-              <span id="interview-save-status" class="status-msg"></span>
+              <div class="interview-card">
+                <label for="intw-q6"><strong>6. Remarques libres :</strong> Quelque chose à ajouter ou à préciser sur votre expérience ?</label>
+                <textarea id="intw-q6" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
+              </div>
+
+              <div class="action-row" style="margin-top: 10px;">
+                <button type="button" id="btn-save-interview" class="btn btn-secondary">Enregistrer les notes intermédiaires</button>
+                <span id="interview-save-status" class="status-msg"></span>
+              </div>
             </div>
           </details>
 
+          <div class="warning-box" style="margin-top: 18px;">
+            <label class="checkbox-confirm-label">
+              <input type="checkbox" id="check-interview-done">
+              <span><strong>Confirmation expérimentateur :</strong> L'entrevue finale a bien été menée avec le participant (<span id="interview-participant-code-confirm">PXX</span>) et le dictaphone a été arrêté/sauvegardé.</span>
+            </label>
+          </div>
+
           <hr>
 
+          <div class="action-row">
+            <button type="button" id="btn-finish-interview" class="btn btn-primary btn-lg" disabled>Suivant — Terminer l'expérience et télécharger toutes les données</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 17. FINAL DEBRIEF & COMPLETE TEST EXPORT SCREEN          -->
+      <!-- ======================================================== -->
+      <section id="screen-finish" class="screen">
+        <div class="card">
+          <div class="step-indicator">Clôture — Toutes les étapes complétées</div>
+          <h1>Merci beaucoup pour votre participation !</h1>
+          <p class="subtitle">L'ensemble du protocole est complété. Vérifiez ci-dessous que les données complètes du test sont bien enregistrées avant de passer au participant suivant.</p>
+
+          <div id="finish-checklist" class="completion-checklist"></div>
+
           <div id="save-confirmation-box" class="info-box">
-            <p><strong>Sauvegarde automatique :</strong> Les données de cette session sont enregistrées dans <code>data_output/raw_json/session_PXX.json</code> et consolidées dans <code>data_output/csv/all_participants_summary.csv</code> ainsi que dans la mémoire locale (<code>localStorage</code>).</p>
-            <p class="help-text" style="margin-bottom: 0;">Vous pouvez également télécharger manuellement une copie directe des fichiers :</p>
+            <p id="final-save-status" style="margin-bottom: 6px;"><strong>Sauvegarde automatique :</strong> Enregistrement de la session en cours...</p>
+            <p id="final-save-detail" class="help-text" style="margin-bottom: 0;">Les données codées sont enregistrées dans <code>data_output/raw_json/session_PXX.json</code> et consolidées dans <code>data_output/csv/all_participants_summary.csv</code>.</p>
           </div>
 
-          <!-- Export Actions -->
-          <div class="action-row export-buttons">
-            <button type="button" id="btn-download-json" class="btn btn-primary">Télécharger le JSON brut</button>
-            <button type="button" id="btn-download-csv" class="btn btn-primary">Télécharger le CSV participant</button>
-            <button type="button" id="btn-reset-session" class="btn btn-secondary">Nouveau participant</button>
+          <!-- Always-visible export box for complete participant & browser-wide data -->
+          <div class="export-panel-box">
+            <h3 style="margin-top: 0;">Téléchargement complet des données du test</h3>
+            <p class="help-text" style="margin-top: 0;">
+              Le JSON contient toutes les données complètes (consentement, pré-condition, calibration, pratique, 3 blocs, clics, événements audio, classement et entrevue). Le CSV contient le tableau d'analyse à 36 colonnes.
+            </p>
+            <div class="action-row export-buttons" style="margin-top: 10px;">
+              <button type="button" id="btn-download-json" class="btn btn-primary">Télécharger tout le test (JSON — PXX)</button>
+              <button type="button" id="btn-download-csv" class="btn btn-primary">Télécharger le résumé (CSV — PXX)</button>
+            </div>
+            <div class="action-row export-buttons" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0;">
+              <button type="button" id="btn-download-all-json" class="btn btn-secondary btn-sm">Télécharger toutes les sessions du navigateur (JSON global)</button>
+              <button type="button" id="btn-download-all-csv" class="btn btn-secondary btn-sm">Télécharger toutes les sessions du navigateur (CSV consolidé)</button>
+            </div>
           </div>
+
+          <div class="action-row" style="justify-content: space-between; margin-top: 16px;">
+            <button type="button" id="btn-back-to-interview" class="btn btn-secondary">← Revenir à l'entrevue / notes</button>
+            <button type="button" id="btn-reset-session" class="btn btn-primary">Nouveau participant</button>
+          </div>
+
+          <hr>
+
+          <!-- Experimenter-only results summary table -->
+          <details id="experimenter-panel" class="experimenter-panel">
+            <summary class="experimenter-panel-summary">
+              Espace Expérimentateur — Résultats détaillés du participant
+            </summary>
+
+            <div class="experimenter-panel-body">
+              <div id="ranking-recap-box" class="info-box" style="margin-bottom: 20px;">
+                <strong>Classement enregistré du participant :</strong>
+                <p id="ranking-recap-text" style="margin-top: 5px; margin-bottom: 0;">(Enregistrement en cours...)</p>
+              </div>
+
+              <h3>Rapport de session</h3>
+              <div class="table-container">
+                <table id="summary-table" class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Bloc</th>
+                      <th>Modalité</th>
+                      <th>Texte</th>
+                      <th>Temps (s)</th>
+                      <th>Erreurs détectées (VP / 6)</th>
+                      <th>Faux Positifs (FP)</th>
+                      <th>Taux détection</th>
+                      <th>Quiz rétention (/3)</th>
+                      <th>Agréabilité</th>
+                      <th>Effort</th>
+                    </tr>
+                  </thead>
+                  <tbody id="summary-table-body">
+                    <!-- Injected dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </details>
 
         </div>
       </section>

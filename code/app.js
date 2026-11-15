@@ -1,6 +1,6 @@
 /**
  * IFT 6075 — Expérience Relecture & Modalités
- * Moteur d'expérimentation automatisé avec étalonnage audio et transitions pas-à-pas
+ * Moteur d'expérimentation automatisé avec étalonnage audio, reprise de session et garde-fous
  */
 
 (function () {
@@ -14,7 +14,7 @@
   let includePractice = true;
 
   let currentBlockIndex = 0; // 0, 1, 2
-  let currentStage = 'setup'; // 'setup', 'audioCalibration', 'practiceIntro', 'practice', 'practiceQuizIntro', 'practiceQuiz', 'practiceFinish', 'instruction', 'trial', 'trialQuizIntro', 'quiz', 'ratingIntro', 'rating', 'interblock', 'finish'
+  let currentStage = 'setup';
 
   let trialStartTime = null;
   let timerInterval = null;
@@ -23,28 +23,61 @@
   let currentTrialClicks = [];
   let currentPracticeClicks = [];
 
-  let ttsUtterance = null;
-  let ttsVoices = [];
-  let selectedVoice = null;
+  // Server & session recovery state
+  let isServerConnected = false;
+  let serverStatusParticipants = {};
+  let pendingArchiveOnFirstSave = false;
+
+  // Audio TTS state (pre-recorded MP3 files — Amélie [fr-CA])
+  const PRE_RECORDED_VOICE_LABEL = 'Amélie [fr-CA] (pré-enregistré MP3)';
+  const AUDIO_TRACKS = {
+    calibration: 'audio/calibration_test.mp3',
+    text1: 'audio/text1.mp3',
+    text2: 'audio/text2.mp3',
+    text3: 'audio/text3.mp3'
+  };
+  const preloadedAudio = {};
+  let activeAudio = null;
+  let activeTrackKey = null;
+  let audioSessionId = 0;
   let isTtsPaused = false;
   let currentTtsRate = 1.0;
   let currentTtsVolume = 1.0;
+  let ttsState = 'idle'; // 'idle' | 'playing' | 'paused' | 'ended' | 'error'
+  let currentTtsEvents = [];
+  let isTestTtsPlaying = false;
+  let interviewAutoSaveTimer = null;
 
   // Session Results
-  let sessionData = {
-    participant_id: null,
-    start_time: null,
-    end_time: null,
-    precondition: null,
-    practice_results: null,
-    trials: [],
-    final_ranking: null,
-    interview_answers: null
-  };
+  function createEmptySessionData() {
+    return {
+      participant_id: null,
+      start_time: null,
+      end_time: null,
+      consent_confirmed: false,
+      consent_confirmed_at: null,
+      environment: {
+        user_agent: navigator.userAgent || '',
+        platform: navigator.platform || ''
+      },
+      calibration: null,
+      precondition: null,
+      practice_results: null,
+      trials: [],
+      final_ranking: null,
+      ranking_completed_at: null,
+      interview_completed: false,
+      interview_completed_at: null,
+      interview_answers: null
+    };
+  }
+
+  let sessionData = createEmptySessionData();
 
   // DOM Screens
   const screens = {
     setup: document.getElementById('screen-setup'),
+    consent: document.getElementById('screen-consent'),
     precondition: document.getElementById('screen-precondition'),
     audioCalibration: document.getElementById('screen-audio-calibration'),
     practiceIntro: document.getElementById('screen-practice-intro'),
@@ -60,6 +93,7 @@
     rating: document.getElementById('screen-rating'),
     interblock: document.getElementById('screen-interblock'),
     ranking: document.getElementById('screen-ranking'),
+    interviewGuide: document.getElementById('screen-interview-guide'),
     finish: document.getElementById('screen-finish')
   };
 
@@ -68,11 +102,24 @@
   const footerStatus = document.getElementById('footer-status');
 
   // Setup elements
+  const serverStatusBanner = document.getElementById('server-status-banner');
   const selectParticipant = document.getElementById('select-participant');
   const setupDetails = document.getElementById('setup-details');
   const setupOrderList = document.getElementById('setup-order-list');
+  const existingSessionBanner = document.getElementById('existing-session-banner');
+  const existingSessionMsg = document.getElementById('existing-session-msg');
+  const btnResumeSession = document.getElementById('btn-resume-session');
+  const btnOpenFinish = document.getElementById('btn-open-finish');
   const checkPractice = document.getElementById('check-practice');
   const btnStartExperiment = document.getElementById('btn-start-experiment');
+
+  // Consent elements
+  const consentParticipantCode = document.getElementById('consent-participant-code');
+  const consentParticipantCodeInline = document.getElementById('consent-participant-code-inline');
+  const consentParticipantCodeConfirm = document.getElementById('consent-participant-code-confirm');
+  const checkConsentSigned = document.getElementById('check-consent-signed');
+  const btnConsentBack = document.getElementById('btn-consent-back');
+  const btnConsentNext = document.getElementById('btn-consent-next');
 
   // Audio calibration elements
   const ttsVolumeSlider = document.getElementById('tts-volume-slider');
@@ -80,7 +127,7 @@
   const ttsSpeedSlider = document.getElementById('tts-speed-slider');
   const ttsSpeedVal = document.getElementById('tts-speed-val');
   const speedPresetsContainer = document.getElementById('speed-presets-container');
-  const selectTtsVoice = document.getElementById('select-tts-voice');
+  const ttsActiveVoiceLabel = document.getElementById('tts-active-voice-label');
   const btnTestTts = document.getElementById('btn-test-tts');
   const ttsTestStatus = document.getElementById('tts-test-status');
   const btnStartFromCalibration = document.getElementById('btn-start-from-calibration');
@@ -149,10 +196,24 @@
   const prefComments = document.getElementById('pref-comments');
   const rankingErrorMsg = document.getElementById('ranking-error-msg');
   const btnSaveRanking = document.getElementById('btn-save-ranking');
+  // Interview guide & Finish elements
+  const interviewParticipantCode = document.getElementById('interview-participant-code');
+  const interviewParticipantCodeInline = document.getElementById('interview-participant-code-inline');
+  const interviewParticipantCodeConfirm = document.getElementById('interview-participant-code-confirm');
+  const interviewNotesDetails = document.getElementById('interview-notes-details');
+  const checkInterviewDone = document.getElementById('check-interview-done');
+  const btnFinishInterview = document.getElementById('btn-finish-interview');
+  const finishChecklist = document.getElementById('finish-checklist');
+  const finalSaveStatus = document.getElementById('final-save-status');
+  const finalSaveDetail = document.getElementById('final-save-detail');
+  const experimenterPanel = document.getElementById('experimenter-panel');
   const rankingRecapText = document.getElementById('ranking-recap-text');
   const summaryTableBody = document.getElementById('summary-table-body');
   const btnDownloadJson = document.getElementById('btn-download-json');
   const btnDownloadCsv = document.getElementById('btn-download-csv');
+  const btnDownloadAllJson = document.getElementById('btn-download-all-json');
+  const btnDownloadAllCsv = document.getElementById('btn-download-all-csv');
+  const btnBackToInterview = document.getElementById('btn-back-to-interview');
   const btnResetSession = document.getElementById('btn-reset-session');
 
   // Interview elements (optional in-app notes)
@@ -164,6 +225,21 @@
   const intwQ6 = document.getElementById('intw-q6');
   const btnSaveInterview = document.getElementById('btn-save-interview');
   const interviewSaveStatus = document.getElementById('interview-save-status');
+
+  const CONDITION_LABELS = {
+    SIL: 'Lecture silencieuse',
+    HAUTE: 'Lecture à voix haute',
+    TTS: 'TTS bimodal (synthèse vocale + écran)'
+  };
+
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
   // ==========================================================
   // INITIALIZATION & DATA LOADING
@@ -184,8 +260,10 @@
       }
 
       footerStatus.textContent = 'Prêt';
-      initSpeechSynthesis();
+      initPreRecordedAudio();
       initEventListeners();
+      updateCalibrationButtonLabel();
+      await refreshSetupStatus();
     } catch (err) {
       console.error('Erreur lors du chargement des fichiers JSON:', err);
       footerStatus.textContent = 'Erreur de chargement (veuillez vérifier les fichiers data/)';
@@ -193,100 +271,460 @@
   }
 
   // ==========================================================
-  // TTS (WEB SPEECH API)
+  // SERVER STATUS & PARTICIPANT RECOVERY
   // ==========================================================
-  function initSpeechSynthesis() {
-    if (!('speechSynthesis' in window)) {
-      if (ttsTestStatus) ttsTestStatus.textContent = 'Synthèse vocale non supportée par ce navigateur.';
+  function isStaticHostingHost() {
+    const host = (window.location.hostname || '').toLowerCase();
+    return host.endsWith('.github.io') || host === 'github.io';
+  }
+
+  async function refreshSetupStatus() {
+    if (window.location.protocol === 'file:' || isStaticHostingHost()) {
+      isServerConnected = false;
+      serverStatusParticipants = {};
+    } else {
+      try {
+        const res = await fetch('/api/status', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          isServerConnected = Boolean(data && data.server_mode);
+          serverStatusParticipants = (data && data.participants) || {};
+        } else {
+          isServerConnected = false;
+          serverStatusParticipants = {};
+        }
+      } catch (_) {
+        isServerConnected = false;
+        serverStatusParticipants = {};
+      }
+    }
+
+    if (serverStatusBanner) {
+      if (isServerConnected) {
+        serverStatusBanner.className = 'info-box status-banner-ok';
+        serverStatusBanner.innerHTML =
+          '<strong>Serveur local connecté :</strong> la sauvegarde automatique vers <code>data_output/</code> (JSON et CSV) est active.';
+      } else if (window.location.protocol !== 'file:') {
+        serverStatusBanner.className = 'info-box status-banner-info';
+        serverStatusBanner.innerHTML =
+          '<strong>Mode en ligne (hébergement statique / GitHub Pages) :</strong> aucune donnée n\'est envoyée sur Internet. Les logs (<code>session_PXX.json</code> et <code>summary_PXX.csv</code>) restent 100 % locaux et seront téléchargés automatiquement sur cet ordinateur à la fin de la session.';
+      } else {
+        serverStatusBanner.className = 'info-box status-banner-warn';
+        serverStatusBanner.innerHTML =
+          '<strong>Mode fichier local (<code>file://</code>) :</strong> la session reste sauvegardée dans le navigateur (<code>localStorage</code>) et téléchargera les logs en JSON/CSV à la fin. Pour l\'écriture automatique dans <code>data_output/</code>, lancez <code>Lancer_Experience.command</code> (ou <code>python3 server.py</code>).';
+      }
+    }
+
+    updateParticipantDropdownLabels();
+    if (selectedParticipant) {
+      updateExistingSessionNotice(selectedParticipant);
+    }
+  }
+
+  function getLocalSession(pid) {
+    try {
+      const raw = localStorage.getItem(`IFT6075_${pid}`);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function hasNonEmptyInterviewNotes(session) {
+    const intw = (session && session.interview_answers) || {};
+    return Object.values(intw).some(v => String(v || '').trim().length > 0);
+  }
+
+  function getExistingSessionSummary(pid) {
+    const srv = serverStatusParticipants[pid];
+    if (srv && srv.exists) {
+      return {
+        source: 'server',
+        trialsCount: srv.trials_count || 0,
+        completed: Boolean(srv.completed),
+        hasConsent: Boolean(srv.has_consent),
+        hasRanking: Boolean(srv.has_ranking),
+        interviewCompleted: Boolean(srv.interview_completed),
+        hasPrecondition: true,
+        updatedAt: srv.updated_at || srv.start_time || ''
+      };
+    }
+
+    const local = getLocalSession(pid);
+    if (local && (local.consent_confirmed || local.precondition || (local.trials && local.trials.length > 0) || local.final_ranking || local.interview_completed)) {
+      const completedTrials = (local.trials || []).filter(
+        t => t && t.agreabilite !== null && t.agreabilite !== undefined && t.effort !== null && t.effort !== undefined
+      );
+      const hasRanking = Boolean(local.final_ranking && local.final_ranking.rank_1);
+      const interviewCompleted = Boolean(local.interview_completed) || hasNonEmptyInterviewNotes(local);
+      return {
+        source: 'localStorage',
+        trialsCount: completedTrials.length,
+        completed: completedTrials.length >= 3 && hasRanking,
+        hasConsent: Boolean(local.consent_confirmed),
+        hasRanking,
+        interviewCompleted,
+        hasPrecondition: Boolean(local.precondition),
+        updatedAt: local.end_time || local.start_time || ''
+      };
+    }
+    return null;
+  }
+
+  function updateParticipantDropdownLabels() {
+    if (!selectParticipant) return;
+    Array.from(selectParticipant.options).forEach(opt => {
+      const pid = opt.value;
+      if (!pid) return;
+      const summary = getExistingSessionSummary(pid);
+      if (!summary) {
+        opt.textContent = pid;
+      } else if (summary.completed && summary.interviewCompleted) {
+        opt.textContent = `${pid} — ✓ Terminé (3/3 + entrevue)`;
+      } else if (summary.completed) {
+        opt.textContent = `${pid} — ⏳ Entrevue à compléter (3/3)`;
+      } else {
+        opt.textContent = `${pid} — ⚠ En cours (${summary.trialsCount}/3)`;
+      }
+    });
+  }
+
+  function updateExistingSessionNotice(pid) {
+    if (!existingSessionBanner) return;
+    const summary = pid ? getExistingSessionSummary(pid) : null;
+    if (!summary) {
+      existingSessionBanner.classList.add('hidden');
+      if (btnResumeSession) btnResumeSession.classList.add('hidden');
+      if (btnOpenFinish) btnOpenFinish.classList.add('hidden');
+      if (btnStartExperiment) {
+        btnStartExperiment.textContent = 'Suivant — Étape 1 : Consentement (FIC)';
+      }
       return;
     }
 
-    function populateVoices() {
-      const allVoices = (window.speechSynthesis.getVoices && window.speechSynthesis.getVoices()) || [];
-
-      // Filtrer toutes les voix françaises disponibles (cross-platform : Windows, Mac, Linux, ChromeOS)
-      ttsVoices = allVoices.filter(v => {
-        const lang = (v.lang || '').toLowerCase();
-        return lang.startsWith('fr') || lang.includes('french');
-      });
-
-      // Si aucune voix fr n'est explicitement marquée par lang, chercher par nom
-      if (ttsVoices.length === 0 && allVoices.length > 0) {
-        ttsVoices = allVoices.filter(v => {
-          const name = (v.name || '').toLowerCase();
-          return name.includes('french') || name.includes('français') || name.includes('francais');
-        });
+    existingSessionBanner.classList.remove('hidden');
+    if (summary.completed) {
+      if (summary.interviewCompleted) {
+        existingSessionMsg.innerHTML =
+          `<strong>Session complète déjà enregistrée pour ${escapeHtml(pid)}</strong> (${summary.trialsCount}/3 blocs, classement et entrevue complétés). Choisissez un autre identifiant si vous accueillez un nouveau participant, ou ouvrez sa synthèse / export complet.`;
+        if (btnOpenFinish) btnOpenFinish.textContent = 'Ouvrir la synthèse / export complet';
+      } else {
+        existingSessionMsg.innerHTML =
+          `<strong>Partie ordinateur terminée pour ${escapeHtml(pid)}</strong> (${summary.trialsCount}/3 blocs et classement enregistrés — <strong>entrevue finale à compléter</strong>). Ouvrez l'écran d'entrevue pour clôturer et télécharger les données.`;
+        if (btnOpenFinish) btnOpenFinish.textContent = 'Compléter l\'entrevue finale';
       }
+      if (btnResumeSession) btnResumeSession.classList.add('hidden');
+      if (btnOpenFinish) btnOpenFinish.classList.remove('hidden');
+    } else {
+      existingSessionMsg.innerHTML =
+        `<strong>Session interrompue trouvée pour ${escapeHtml(pid)}</strong> (${summary.trialsCount}/3 blocs complétés). Vous pouvez reprendre exactement où le participant s'est arrêté.`;
+      if (btnResumeSession) btnResumeSession.classList.remove('hidden');
+      if (btnOpenFinish) btnOpenFinish.classList.add('hidden');
+    }
 
-      // Tri intelligent : voix naturelles françaises en tête
-      ttsVoices.sort((a, b) => {
-        const getRank = (v) => {
-          const n = (v.name || '').toLowerCase();
-          const l = (v.lang || '').toLowerCase();
-          if (n.includes('google')) return 1;
-          if (l.includes('ca')) return 2; // Français Canada
-          if (n.includes('thomas') || n.includes('amélie') || n.includes('amelie')) return 3;
-          if (n.includes('paul') || n.includes('hortense') || n.includes('julie') || n.includes('mathieu')) return 4;
-          if (l.startsWith('fr')) return 5;
-          return 6;
-        };
-        return getRank(a) - getRank(b);
-      });
+    if (btnStartExperiment) {
+      btnStartExperiment.textContent = 'Démarrer une nouvelle session (archiver l\'ancienne)';
+    }
+  }
 
-      if (selectTtsVoice) {
-        selectTtsVoice.innerHTML = '';
-        if (ttsVoices.length === 0) {
-          const opt = document.createElement('option');
-          opt.value = 0;
-          opt.textContent = "Voix française standard du système";
-          selectTtsVoice.appendChild(opt);
-          selectedVoice = null;
-        } else {
-          ttsVoices.forEach((voice, i) => {
-            const opt = document.createElement('option');
-            opt.value = i;
-            let label = voice.name;
-            if (voice.lang) {
-              label += ` [${voice.lang}]`;
-            }
-            opt.textContent = label;
-            selectTtsVoice.appendChild(opt);
-          });
-          selectedVoice = ttsVoices[0];
+  async function fetchFullSessionForParticipant(pid) {
+    if (isServerConnected) {
+      try {
+        const res = await fetch(`/api/session/${encodeURIComponent(pid)}`, { cache: 'no-store' });
+        if (res.ok) {
+          const payload = await res.json();
+          if (payload && payload.session) return payload.session;
         }
+      } catch (_) {}
+    }
+    return getLocalSession(pid);
+  }
+
+  function applyLoadedCalibration(loadedSession) {
+    const cal = (loadedSession && loadedSession.calibration) || {};
+    const lastTtsTrial = ((loadedSession && loadedSession.trials) || []).find(t => t && t.tts_rate);
+    const rate = cal.tts_rate || (lastTtsTrial && lastTtsTrial.tts_rate) || 1.0;
+    const vol = cal.tts_volume || (lastTtsTrial && lastTtsTrial.tts_volume) || 1.0;
+
+    updateTtsSpeed(rate);
+    updateTtsVolume(vol);
+  }
+
+  function openConsentScreen() {
+    const pid = sessionData.participant_id || selectedParticipant || 'PXX';
+    if (consentParticipantCode) consentParticipantCode.textContent = pid;
+    if (consentParticipantCodeInline) consentParticipantCodeInline.textContent = pid;
+    if (consentParticipantCodeConfirm) consentParticipantCodeConfirm.textContent = pid;
+    if (checkConsentSigned) {
+      checkConsentSigned.checked = Boolean(sessionData.consent_confirmed);
+    }
+    if (btnConsentNext) {
+      btnConsentNext.disabled = !(checkConsentSigned && checkConsentSigned.checked);
+    }
+    showScreen('consent');
+  }
+
+  function populateInterviewFieldsFromSession(loaded) {
+    const pid = (loaded && loaded.participant_id) || selectedParticipant || 'PXX';
+    if (interviewParticipantCode) interviewParticipantCode.textContent = pid;
+    if (interviewParticipantCodeInline) interviewParticipantCodeInline.textContent = pid;
+    if (interviewParticipantCodeConfirm) interviewParticipantCodeConfirm.textContent = pid;
+
+    const intw = (loaded && loaded.interview_answers) || {};
+    if (intwQ1) intwQ1.value = intw.q1_habitudes || '';
+    if (intwQ2) intwQ2.value = intw.q2_usage_tts_passe || '';
+    if (intwQ3) intwQ3.value = intw.q3_avantages_inconvenients || '';
+    if (intwQ4) intwQ4.value = intw.q4_demarquee || '';
+    if (intwQ5) intwQ5.value = intw.q5_difficulte_textes || '';
+    if (intwQ6) intwQ6.value = intw.q6_ajout_remarques || '';
+  }
+
+  function openInterviewGuideScreen() {
+    populateInterviewFieldsFromSession(sessionData);
+    if (interviewNotesDetails) {
+      interviewNotesDetails.open = hasNonEmptyInterviewNotes(sessionData);
+    }
+    if (interviewSaveStatus) interviewSaveStatus.textContent = '';
+    if (checkInterviewDone) {
+      checkInterviewDone.checked = Boolean(sessionData.interview_completed);
+    }
+    if (btnFinishInterview) {
+      btnFinishInterview.disabled = !(checkInterviewDone && checkInterviewDone.checked);
+    }
+    showScreen('interviewGuide');
+  }
+
+  function updateDownloadButtonLabels(pid) {
+    const labelPid = pid || 'PXX';
+    if (btnDownloadJson) {
+      btnDownloadJson.textContent = `Télécharger tout le test (JSON — ${labelPid})`;
+    }
+    if (btnDownloadCsv) {
+      btnDownloadCsv.textContent = `Télécharger le résumé (CSV — ${labelPid})`;
+    }
+  }
+
+  function renderFinishChecklist(loaded) {
+    if (!finishChecklist) return;
+    const s = loaded || sessionData;
+    const trialsCount = (s.trials || []).length;
+    const hasRanking = Boolean(s.final_ranking && s.final_ranking.rank_1);
+    const hasInterview = Boolean(s.interview_completed) || hasNonEmptyInterviewNotes(s);
+    const items = [
+      { done: Boolean(s.consent_confirmed), text: s.consent_confirmed ? '✓ Consentement (FIC)' : '○ Consentement (FIC) non coché' },
+      { done: Boolean(s.precondition), text: s.precondition ? '✓ Pré-condition' : '○ Pré-condition manquant' },
+      { done: Boolean(s.calibration), text: s.calibration ? '✓ Calibration audio' : '○ Calibration par défaut' },
+      { done: trialsCount >= 3, text: trialsCount >= 3 ? '✓ 3/3 blocs + questionnaires' : `⚠ ${trialsCount}/3 blocs complétés` },
+      { done: hasRanking, text: hasRanking ? '✓ Classement final' : '○ Classement manquant' },
+      { done: hasInterview, text: hasInterview ? '✓ Entrevue effectuée' : '○ Entrevue à confirmer' }
+    ];
+    finishChecklist.innerHTML = items
+      .map(item => `<span class="completion-badge${item.done ? '' : ' pending'}">${escapeHtml(item.text)}</span>`)
+      .join('');
+  }
+
+  async function resumeExistingSession() {
+    if (!selectedParticipant || !participantConfig) return;
+    const loaded = await fetchFullSessionForParticipant(selectedParticipant);
+    if (!loaded) {
+      alert(`Impossible de charger la session de ${selectedParticipant}.`);
+      return;
+    }
+
+    pendingArchiveOnFirstSave = false;
+    includePractice = checkPractice.checked;
+    sessionData = Object.assign(createEmptySessionData(), loaded);
+    sessionData.participant_id = selectedParticipant;
+    sessionData.trials = (sessionData.trials || []).filter(
+      t => t && t.agreabilite !== null && t.agreabilite !== undefined && t.effort !== null && t.effort !== undefined
+    );
+
+    applyLoadedCalibration(sessionData);
+    updateCalibrationButtonLabel();
+
+    if (!sessionData.consent_confirmed && !sessionData.precondition) {
+      openConsentScreen();
+      return;
+    }
+
+    if (!sessionData.precondition) {
+      showScreen('precondition');
+      return;
+    }
+
+    if (sessionData.trials.length >= 3) {
+      if (sessionData.final_ranking && sessionData.final_ranking.rank_1) {
+        if (sessionData.interview_completed || hasNonEmptyInterviewNotes(sessionData)) {
+          openLoadedFinishScreen(sessionData, false);
+        } else {
+          openInterviewGuideScreen();
+        }
+      } else {
+        goToRankingScreen();
+      }
+      return;
+    }
+
+    startBlockInstruction(sessionData.trials.length);
+  }
+
+  async function openCompletedSessionFinish() {
+    if (!selectedParticipant || !participantConfig) return;
+    const loaded = await fetchFullSessionForParticipant(selectedParticipant);
+    if (!loaded) {
+      alert(`Impossible de charger la session de ${selectedParticipant}.`);
+      return;
+    }
+    pendingArchiveOnFirstSave = false;
+    sessionData = Object.assign(createEmptySessionData(), loaded);
+    sessionData.participant_id = selectedParticipant;
+    applyLoadedCalibration(sessionData);
+    if (sessionData.interview_completed || hasNonEmptyInterviewNotes(sessionData)) {
+      openLoadedFinishScreen(sessionData, true);
+    } else {
+      openInterviewGuideScreen();
+    }
+  }
+
+  function openLoadedFinishScreen(loaded, openExperimenterPanel) {
+    const rank = loaded.final_ranking || {};
+    if (rankingRecapText) {
+      if (rank.rank_1) {
+        rankingRecapText.innerHTML = `
+          <strong>1ère place :</strong> ${escapeHtml(CONDITION_LABELS[rank.rank_1] || rank.rank_1)} &nbsp;|&nbsp;
+          <strong>2e place :</strong> ${escapeHtml(CONDITION_LABELS[rank.rank_2] || rank.rank_2)} &nbsp;|&nbsp;
+          <strong>3e place :</strong> ${escapeHtml(CONDITION_LABELS[rank.rank_3] || rank.rank_3)}
+          ${rank.comment ? `<br><span style="color:#555; display:inline-block; margin-top:5px;">Commentaire du participant : <em>« ${escapeHtml(rank.comment)} »</em></span>` : ''}
+        `;
+      } else {
+        rankingRecapText.textContent = 'Classement non enregistré.';
       }
     }
 
-    populateVoices();
-    if (window.speechSynthesis.onvoiceschanged !== undefined) {
-      window.speechSynthesis.onvoiceschanged = populateVoices;
-    }
+    populateInterviewFieldsFromSession(loaded);
+    renderFinishChecklist(loaded);
+    updateDownloadButtonLabels(loaded.participant_id);
+    renderSummaryTable();
 
-    if (selectTtsVoice) {
-      selectTtsVoice.addEventListener('change', () => {
-        const idx = parseInt(selectTtsVoice.value, 10);
-        selectedVoice = ttsVoices[idx] || null;
-      });
+    const pidCode = escapeHtml(loaded.participant_id || 'PXX');
+    if (isServerConnected) {
+      updateFinalSaveDisplay(
+        `<strong>Sauvegarde automatique :</strong> Session de <code>${pidCode}</code> chargée depuis le disque.`,
+        getServerSaveDetailHtml(loaded.participant_id)
+      );
+    } else {
+      updateFinalSaveDisplay(
+        `<strong>Sauvegarde locale :</strong> Session de <code>${pidCode}</code> chargée depuis <code>localStorage</code>.`,
+        getOfflineSaveDetailHtml(loaded.participant_id)
+      );
     }
+    if (experimenterPanel) {
+      experimenterPanel.open = Boolean(openExperimenterPanel);
+    }
+    showScreen('finish');
+  }
+
+  // ==========================================================
+  // AUDIO TTS PRÉ-ENREGISTRÉ (MP3 AMÉLIE [fr-CA] — MULTI-PLATEFORME)
+  // ==========================================================
+  function getActiveVoiceLabel() {
+    return PRE_RECORDED_VOICE_LABEL;
+  }
+
+  function getAudioTrackSrc(trackKey) {
+    return AUDIO_TRACKS[trackKey] || null;
+  }
+
+  function formatSpeedBadge(rate) {
+    return `${rate.toFixed(2).replace(/\.?0+$/, '')}x`;
+  }
+
+  function applyAudioSettings(audio) {
+    if (!audio) return;
+    audio.volume = currentTtsVolume;
+    audio.playbackRate = currentTtsRate;
+    if ('preservesPitch' in audio) audio.preservesPitch = true;
+    if ('mozPreservesPitch' in audio) audio.mozPreservesPitch = true;
+    if ('webkitPreservesPitch' in audio) audio.webkitPreservesPitch = true;
+  }
+
+  function preloadAudioTrack(trackKey) {
+    const src = getAudioTrackSrc(trackKey);
+    if (!src || typeof Audio !== 'function') return null;
+    if (!preloadedAudio[trackKey]) {
+      const audio = new Audio(src);
+      audio.preload = 'auto';
+      preloadedAudio[trackKey] = audio;
+    }
+    return preloadedAudio[trackKey];
+  }
+
+  function initPreRecordedAudio() {
+    if (ttsActiveVoiceLabel) {
+      ttsActiveVoiceLabel.textContent = PRE_RECORDED_VOICE_LABEL;
+    }
+    preloadAudioTrack('calibration');
 
     if (btnTestTts) {
       btnTestTts.addEventListener('click', () => {
-        window.speechSynthesis.cancel();
-        const testMsg = new SpeechSynthesisUtterance("Ceci est un test de synthèse vocale pour l'expérience IFT 6075. La vitesse et le volume sonore vous conviennent-ils ?");
-        testMsg.lang = selectedVoice ? selectedVoice.lang : 'fr-CA';
-        testMsg.rate = currentTtsRate;
-        testMsg.volume = currentTtsVolume;
-        if (selectedVoice) {
-          testMsg.voice = selectedVoice;
+        if (isTestTtsPlaying) {
+          stopTtsReading();
+          if (ttsTestStatus) ttsTestStatus.textContent = 'Test arrêté.';
+          return;
         }
+
+        stopTtsReading();
+        const audio = preloadAudioTrack('calibration');
+        if (!audio) {
+          if (ttsTestStatus) ttsTestStatus.textContent = 'Lecture audio non supportée par ce navigateur.';
+          return;
+        }
+
+        const mySession = audioSessionId;
+        activeAudio = audio;
+        activeTrackKey = 'calibration';
+        isTestTtsPlaying = true;
+        ttsState = 'playing';
+
+        if (audio.readyState > 0) {
+          audio.currentTime = 0;
+        }
+        applyAudioSettings(audio);
+
+        btnTestTts.textContent = 'Arrêter le test';
         if (ttsTestStatus) ttsTestStatus.textContent = 'Lecture en cours au casque...';
-        testMsg.onend = () => {
+
+        audio.onended = () => {
+          if (mySession !== audioSessionId || activeAudio !== audio) return;
+          isTestTtsPlaying = false;
+          ttsState = 'ended';
+          activeAudio = null;
+          activeTrackKey = null;
+          btnTestTts.textContent = 'Écouter un extrait de test au casque';
           if (ttsTestStatus) ttsTestStatus.textContent = 'Test audio complété.';
         };
-        testMsg.onerror = () => {
-          if (ttsTestStatus) ttsTestStatus.textContent = 'Erreur lors de la lecture audio.';
+
+        audio.onerror = () => {
+          if (mySession !== audioSessionId || activeAudio !== audio) return;
+          isTestTtsPlaying = false;
+          ttsState = 'error';
+          activeAudio = null;
+          activeTrackKey = null;
+          btnTestTts.textContent = 'Écouter un extrait de test au casque';
+          if (ttsTestStatus) ttsTestStatus.textContent = 'Erreur lors du chargement de audio/calibration_test.mp3.';
         };
-        window.speechSynthesis.speak(testMsg);
+
+        const playPromise = audio.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+          playPromise.catch((err) => {
+            if (mySession !== audioSessionId || activeAudio !== audio) return;
+            console.warn('Test audio play rejected:', err);
+            isTestTtsPlaying = false;
+            ttsState = 'error';
+            btnTestTts.textContent = 'Écouter un extrait de test au casque';
+            if (ttsTestStatus) ttsTestStatus.textContent = 'Impossible de démarrer l\'extrait audio.';
+          });
+        }
       });
     }
   }
@@ -294,7 +732,6 @@
   function updateTtsSpeed(newRate) {
     currentTtsRate = Math.round(parseFloat(newRate) * 100) / 100;
 
-    // Mise à jour de l'affichage du curseur
     if (ttsSpeedSlider) ttsSpeedSlider.value = currentTtsRate;
     if (ttsSpeedVal) {
       let desc = 'Normal';
@@ -304,10 +741,9 @@
       else if (currentTtsRate <= 1.15) desc = 'Dynamique';
       else if (currentTtsRate <= 1.35) desc = 'Rapide';
       else desc = 'Très rapide';
-      ttsSpeedVal.textContent = `${currentTtsRate.toFixed(2).replace(/\.?0+$/, '')}x (${desc})`;
+      ttsSpeedVal.textContent = `${formatSpeedBadge(currentTtsRate)} (${desc})`;
     }
 
-    // Mise à jour visuelle des boutons de raccourci
     if (speedPresetsContainer) {
       speedPresetsContainer.querySelectorAll('.btn-speed-preset').forEach(btn => {
         const bSpeed = parseFloat(btn.dataset.speed);
@@ -319,7 +755,7 @@
       });
     }
 
-    // Note: TTS speed is calibrated before trials to protect timing measurement validity
+    applyAudioSettings(activeAudio);
   }
 
   function updateTtsVolume(newVol) {
@@ -328,73 +764,161 @@
     if (ttsVolumeVal) {
       ttsVolumeVal.textContent = `${Math.round(currentTtsVolume * 100)}%`;
     }
+    applyAudioSettings(activeAudio);
   }
 
-  // Keep-alive heartbeat for Web Speech API in Chromium browsers on long texts
-  let ttsKeepAliveTimer = null;
-  function startTtsKeepAlive() {
-    clearInterval(ttsKeepAliveTimer);
-    ttsKeepAliveTimer = setInterval(() => {
-      if ('speechSynthesis' in window && window.speechSynthesis.speaking && !isTtsPaused) {
-        window.speechSynthesis.pause();
-        window.speechSynthesis.resume();
-      }
-    }, 10000);
-  }
-  function stopTtsKeepAlive() {
-    clearInterval(ttsKeepAliveTimer);
-    ttsKeepAliveTimer = null;
+  function logTtsEvent(eventName, extra) {
+    if (!trialStartTime) return;
+    const curTime = activeAudio && Number.isFinite(activeAudio.currentTime)
+      ? Math.round(activeAudio.currentTime * 100) / 100
+      : null;
+    const durTime = activeAudio && Number.isFinite(activeAudio.duration)
+      ? Math.round(activeAudio.duration * 100) / 100
+      : null;
+    currentTtsEvents.push(Object.assign({
+      event: eventName,
+      timestamp_iso: new Date().toISOString(),
+      relative_time_ms: Math.max(0, Math.round(performance.now() - trialStartTime)),
+      audio_file: activeTrackKey ? getAudioTrackSrc(activeTrackKey) : null,
+      audio_time_s: curTime,
+      audio_duration_s: durTime
+    }, extra || {}));
   }
 
-  function startTtsReading(text, onCompleteCallback) {
+  function startTtsReading(textId, onCompleteCallback) {
     stopTtsReading();
-    if (!('speechSynthesis' in window)) return;
-
-    ttsUtterance = new SpeechSynthesisUtterance(text);
-    ttsUtterance.lang = selectedVoice ? selectedVoice.lang : 'fr-CA';
-    ttsUtterance.rate = currentTtsRate;
-    ttsUtterance.volume = currentTtsVolume;
-    if (selectedVoice) {
-      ttsUtterance.voice = selectedVoice;
+    const audio = preloadAudioTrack(textId);
+    if (!audio) {
+      ttsState = 'error';
+      if (ttsAudioIndicator) {
+        ttsAudioIndicator.textContent = 'Erreur audio';
+        ttsAudioIndicator.className = 'tts-indicator';
+      }
+      if (ttsAudioDetail) {
+        ttsAudioDetail.textContent = 'Piste audio introuvable pour ce texte.';
+      }
+      if (btnTtsPause) {
+        btnTtsPause.textContent = 'Pause';
+        btnTtsPause.disabled = true;
+      }
+      logTtsEvent('error', { error: 'missing_track', text_id: textId });
+      return;
     }
 
-    ttsAudioIndicator.textContent = 'Lecture en cours';
-    ttsAudioIndicator.className = 'tts-indicator playing';
-    if (ttsAudioDetail) ttsAudioDetail.textContent = `Synthèse vocale active (${currentTtsRate}x)`;
-    if (ttsTrialSpeedBadge) ttsTrialSpeedBadge.textContent = `Vitesse : ${currentTtsRate.toFixed(2).replace(/\.?0+$/, '')}x`;
-    btnTtsPause.textContent = 'Pause';
+    const mySession = audioSessionId;
+    activeAudio = audio;
+    activeTrackKey = textId;
+    ttsState = 'playing';
     isTtsPaused = false;
 
-    ttsUtterance.onend = () => {
-      stopTtsKeepAlive();
-      ttsAudioIndicator.textContent = 'Terminé';
-      ttsAudioIndicator.className = 'tts-indicator';
-      if (ttsAudioDetail) ttsAudioDetail.textContent = 'Lecture audio terminée. Vous pouvez poursuivre ou valider.';
+    if (audio.readyState > 0) {
+      audio.currentTime = 0;
+    }
+    applyAudioSettings(audio);
+
+    if (ttsAudioIndicator) {
+      ttsAudioIndicator.textContent = 'Lecture en cours';
+      ttsAudioIndicator.className = 'tts-indicator playing';
+    }
+    if (ttsAudioDetail) {
+      ttsAudioDetail.textContent = `Audio pré-enregistré actif (${formatSpeedBadge(currentTtsRate)})`;
+    }
+    if (ttsTrialSpeedBadge) {
+      ttsTrialSpeedBadge.textContent = `Vitesse : ${formatSpeedBadge(currentTtsRate)}`;
+    }
+    if (btnTtsPause) {
       btnTtsPause.textContent = 'Pause';
+      btnTtsPause.disabled = false;
+    }
+
+    audio.onended = () => {
+      if (mySession !== audioSessionId || activeAudio !== audio) return;
+      ttsState = 'ended';
+      isTtsPaused = false;
+      if (ttsAudioIndicator) {
+        ttsAudioIndicator.textContent = 'Terminé';
+        ttsAudioIndicator.className = 'tts-indicator';
+      }
+      if (ttsAudioDetail) {
+        ttsAudioDetail.textContent = 'Lecture audio terminée. Vous pouvez poursuivre ou valider.';
+      }
+      if (btnTtsPause) {
+        btnTtsPause.textContent = 'Pause';
+        btnTtsPause.disabled = true;
+      }
+      logTtsEvent('ended');
       if (onCompleteCallback) onCompleteCallback();
     };
 
-    ttsUtterance.onerror = (e) => {
-      stopTtsKeepAlive();
-      console.warn('TTS Error:', e);
-      ttsAudioIndicator.textContent = 'Arrêté';
-      ttsAudioIndicator.className = 'tts-indicator';
+    audio.onerror = () => {
+      if (mySession !== audioSessionId || activeAudio !== audio) return;
+      ttsState = 'error';
+      isTtsPaused = false;
+      if (ttsAudioIndicator) {
+        ttsAudioIndicator.textContent = 'Erreur audio';
+        ttsAudioIndicator.className = 'tts-indicator';
+      }
+      if (ttsAudioDetail) {
+        ttsAudioDetail.textContent = "Erreur de chargement du fichier audio. Cliquez sur Recommencer l'audio.";
+      }
+      if (btnTtsPause) {
+        btnTtsPause.textContent = 'Pause';
+        btnTtsPause.disabled = true;
+      }
+      logTtsEvent('error', { error: 'audio_element_error' });
     };
 
-    window.speechSynthesis.speak(ttsUtterance);
-    startTtsKeepAlive();
+    logTtsEvent('started');
+    const playPromise = audio.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch((err) => {
+        if (mySession !== audioSessionId || activeAudio !== audio) return;
+        console.warn('Audio play blocked or failed:', err);
+        isTtsPaused = true;
+        ttsState = 'paused';
+        if (ttsAudioIndicator) {
+          ttsAudioIndicator.textContent = 'Prêt à lire';
+          ttsAudioIndicator.className = 'tts-indicator paused';
+        }
+        if (ttsAudioDetail) {
+          ttsAudioDetail.textContent = 'Cliquez sur « Lire l\'audio » pour démarrer la lecture.';
+        }
+        if (btnTtsPause) {
+          btnTtsPause.textContent = "Lire l'audio";
+          btnTtsPause.disabled = false;
+        }
+        logTtsEvent('autoplay_blocked', { error: err && err.name ? err.name : 'play_rejected' });
+      });
+    }
   }
 
   function stopTtsReading() {
-    stopTtsKeepAlive();
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+    audioSessionId++;
+    if (activeAudio) {
+      activeAudio.onended = null;
+      activeAudio.onerror = null;
+      try {
+        activeAudio.pause();
+        if (activeAudio.readyState > 0) {
+          activeAudio.currentTime = 0;
+        }
+      } catch (_) {}
+      activeAudio = null;
     }
-    ttsUtterance = null;
+    activeTrackKey = null;
+    ttsState = 'idle';
     isTtsPaused = false;
+    isTestTtsPlaying = false;
+    if (btnTestTts) {
+      btnTestTts.textContent = 'Écouter un extrait de test au casque';
+    }
     if (ttsAudioIndicator) {
       ttsAudioIndicator.textContent = 'Arrêté';
       ttsAudioIndicator.className = 'tts-indicator';
+    }
+    if (btnTtsPause) {
+      btnTtsPause.textContent = 'Pause';
+      btnTtsPause.disabled = false;
     }
   }
 
@@ -424,11 +948,14 @@
       case 'setup':
         headerStep.textContent = 'Configuration';
         break;
+      case 'consent':
+        headerStep.textContent = 'Étape 1 : Consentement (FIC)';
+        break;
       case 'precondition':
-        headerStep.textContent = 'Questionnaire Pré-Condition';
+        headerStep.textContent = 'Étape 2 : Questionnaire Pré-Condition';
         break;
       case 'audioCalibration':
-        headerStep.textContent = 'Accueil & Réglages audio';
+        headerStep.textContent = 'Étape 3 : Accueil & Réglages audio';
         break;
       case 'practiceIntro':
       case 'practice':
@@ -451,13 +978,24 @@
       case 'ranking':
         headerStep.textContent = 'Classement des préférences';
         break;
+      case 'interviewGuide':
+        headerStep.textContent = 'Entrevue post-expérience';
+        break;
       case 'finish':
-        headerStep.textContent = 'Synthèse expérimentateur & Export';
+        headerStep.textContent = 'Clôture & Téléchargement complet';
         break;
       default:
         headerStep.textContent = '';
         break;
     }
+  }
+
+  function updateCalibrationButtonLabel() {
+    if (!btnStartFromCalibration) return;
+    const withPractice = checkPractice ? checkPractice.checked : includePractice;
+    btnStartFromCalibration.textContent = withPractice
+      ? 'Continuer vers l\'entraînement'
+      : 'Commencer l\'expérience';
   }
 
   // ==========================================================
@@ -472,6 +1010,7 @@
         participantConfig = null;
         setupDetails.classList.add('hidden');
         btnStartExperiment.disabled = true;
+        updateExistingSessionNotice(null);
         return;
       }
 
@@ -485,26 +1024,81 @@
           const textId = participantConfig.text_order[idx];
           const textDoc = textsData.texts.find(t => t.id === textId);
           const li = document.createElement('li');
-          li.innerHTML = `<strong>Bloc ${idx + 1} :</strong> ${cond.name} (<em>Texte : ${textDoc ? textDoc.title : textId}</em>)`;
+          li.innerHTML = `<strong>Bloc ${idx + 1} :</strong> ${escapeHtml(cond.name)} (<em>Texte : ${escapeHtml(textDoc ? textDoc.title : textId)}</em>)`;
           setupOrderList.appendChild(li);
         });
         setupDetails.classList.remove('hidden');
         btnStartExperiment.disabled = false;
+        updateExistingSessionNotice(pid);
       }
     });
 
-    // 2. From Setup to Precondition Questionnaire Screen
+    if (checkPractice) {
+      checkPractice.addEventListener('change', updateCalibrationButtonLabel);
+    }
+
+    if (btnResumeSession) {
+      btnResumeSession.addEventListener('click', resumeExistingSession);
+    }
+
+    if (btnOpenFinish) {
+      btnOpenFinish.addEventListener('click', openCompletedSessionFinish);
+    }
+
+    // 2. From Setup to Consent Checklist Screen (Étape 1)
     btnStartExperiment.addEventListener('click', () => {
       if (!selectedParticipant || !participantConfig) return;
 
+      const existing = getExistingSessionSummary(selectedParticipant);
+      if (existing) {
+        const msg =
+          `Des données existent déjà pour ${selectedParticipant} (${existing.trialsCount}/3 blocs).\n\n` +
+          `Voulez-vous archiver l'ancienne session dans backups/ et démarrer une nouvelle passation ?`;
+        if (!confirm(msg)) {
+          return;
+        }
+        pendingArchiveOnFirstSave = true;
+      } else {
+        pendingArchiveOnFirstSave = false;
+      }
+
       includePractice = checkPractice.checked;
+      sessionData = createEmptySessionData();
       sessionData.participant_id = selectedParticipant;
       sessionData.start_time = new Date().toISOString();
-      sessionData.trials = [];
       currentBlockIndex = 0;
-
-      showScreen('precondition');
+      if (document.getElementById('precondition-form')) {
+        document.getElementById('precondition-form').reset();
+      }
+      updateCalibrationButtonLabel();
+      openConsentScreen();
     });
+
+    // 2a. Consent Checklist Controls (Étape 1 -> Étape 2 Precondition)
+    if (checkConsentSigned) {
+      checkConsentSigned.addEventListener('change', () => {
+        if (btnConsentNext) {
+          btnConsentNext.disabled = !checkConsentSigned.checked;
+        }
+      });
+    }
+
+    if (btnConsentBack) {
+      btnConsentBack.addEventListener('click', () => {
+        pendingArchiveOnFirstSave = false;
+        showScreen('setup');
+      });
+    }
+
+    if (btnConsentNext) {
+      btnConsentNext.addEventListener('click', () => {
+        if (!checkConsentSigned || !checkConsentSigned.checked) return;
+        sessionData.consent_confirmed = true;
+        sessionData.consent_confirmed_at = new Date().toISOString();
+        autoSaveSession();
+        showScreen('precondition');
+      });
+    }
 
     // 2b. From Precondition Form to Audio Calibration Screen
     const preconditionForm = document.getElementById('precondition-form');
@@ -555,6 +1149,15 @@
     // 4. Start Button from Audio Calibration
     btnStartFromCalibration.addEventListener('click', () => {
       stopTtsReading();
+      sessionData.calibration = {
+        tts_rate: currentTtsRate,
+        tts_volume: currentTtsVolume,
+        tts_voice: PRE_RECORDED_VOICE_LABEL,
+        tts_voice_lang: 'fr-CA',
+        audio_mode: 'prerecorded_mp3'
+      };
+      autoSaveSession();
+
       if (includePractice) {
         showScreen('practiceIntro');
       } else {
@@ -601,30 +1204,48 @@
 
     // 11. TTS Pause / Resume Button
     btnTtsPause.addEventListener('click', () => {
-      if (!('speechSynthesis' in window)) return;
-      if (isTtsPaused) {
-        window.speechSynthesis.resume();
+      if (!activeAudio) return;
+      if (ttsState === 'ended' || ttsState === 'idle' || ttsState === 'error') return;
+
+      if (isTtsPaused || ttsState === 'paused') {
         isTtsPaused = false;
+        ttsState = 'playing';
         btnTtsPause.textContent = 'Pause';
         ttsAudioIndicator.textContent = 'Lecture en cours';
         ttsAudioIndicator.className = 'tts-indicator playing';
-        if (ttsAudioDetail) ttsAudioDetail.textContent = `Synthèse vocale active (${currentTtsRate}x)`;
+        if (ttsAudioDetail) ttsAudioDetail.textContent = `Audio pré-enregistré actif (${formatSpeedBadge(currentTtsRate)})`;
+        applyAudioSettings(activeAudio);
+        logTtsEvent('resume');
+
+        const playPromise = activeAudio.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+          playPromise.catch((err) => {
+            console.warn('Audio resume rejected:', err);
+            isTtsPaused = true;
+            ttsState = 'paused';
+            btnTtsPause.textContent = 'Reprendre';
+            ttsAudioIndicator.textContent = 'En pause';
+            ttsAudioIndicator.className = 'tts-indicator paused';
+          });
+        }
       } else {
-        window.speechSynthesis.pause();
         isTtsPaused = true;
+        ttsState = 'paused';
+        activeAudio.pause();
         btnTtsPause.textContent = 'Reprendre';
         ttsAudioIndicator.textContent = 'En pause';
         ttsAudioIndicator.className = 'tts-indicator paused';
         if (ttsAudioDetail) ttsAudioDetail.textContent = 'Audio suspendu (cliquez sur Reprendre pour continuer)';
+        logTtsEvent('pause');
       }
     });
 
     // 13. TTS Restart Button
     btnTtsRestart.addEventListener('click', () => {
-      const textId = participantConfig.text_order[currentBlockIndex];
-      const textDoc = textsData.texts.find(t => t.id === textId);
-      if (textDoc) {
-        startTtsReading(textDoc.rawText);
+      const textId = participantConfig && participantConfig.text_order[currentBlockIndex];
+      if (textId && getAudioTrackSrc(textId)) {
+        logTtsEvent('restart');
+        startTtsReading(textId);
       }
     });
 
@@ -679,27 +1300,86 @@
       });
     }
 
-    // 20b. Interview Notes Save (Optional Experimenter Form)
+    // 20b. Interview Notes Auto-sync & Explicit Save Button
+    [intwQ1, intwQ2, intwQ3, intwQ4, intwQ5, intwQ6].forEach(el => {
+      if (!el) return;
+      el.addEventListener('input', () => {
+        syncInterviewAnswersFromDom();
+        clearTimeout(interviewAutoSaveTimer);
+        interviewAutoSaveTimer = setTimeout(() => {
+          autoSaveSession();
+        }, 800);
+      });
+    });
+
     if (btnSaveInterview) {
       btnSaveInterview.addEventListener('click', () => {
         saveInterviewNotes();
       });
     }
 
-    // 21. Download JSON
-    btnDownloadJson.addEventListener('click', () => {
-      downloadJsonData();
-    });
+    if (checkInterviewDone) {
+      checkInterviewDone.addEventListener('change', () => {
+        if (btnFinishInterview) {
+          btnFinishInterview.disabled = !checkInterviewDone.checked;
+        }
+      });
+    }
 
-    // 22. Download CSV
-    btnDownloadCsv.addEventListener('click', () => {
-      downloadCsvData();
-    });
+    if (btnFinishInterview) {
+      btnFinishInterview.addEventListener('click', () => {
+        completeInterviewAndFinish();
+      });
+    }
+
+    if (btnBackToInterview) {
+      btnBackToInterview.addEventListener('click', () => {
+        openInterviewGuideScreen();
+      });
+    }
+
+    // 21. Download JSON (single & all browser sessions)
+    if (btnDownloadJson) {
+      btnDownloadJson.addEventListener('click', () => {
+        downloadJsonData();
+      });
+    }
+
+    // 22. Download CSV (single & all browser sessions)
+    if (btnDownloadCsv) {
+      btnDownloadCsv.addEventListener('click', () => {
+        downloadCsvData();
+      });
+    }
+
+    if (btnDownloadAllJson) {
+      btnDownloadAllJson.addEventListener('click', () => {
+        downloadAllBrowserJsonData();
+      });
+    }
+
+    if (btnDownloadAllCsv) {
+      btnDownloadAllCsv.addEventListener('click', () => {
+        downloadAllBrowserCsvData();
+      });
+    }
 
     // 23. Reset Session
     btnResetSession.addEventListener('click', () => {
-      if (confirm("Êtes-vous sûr de vouloir commencer une nouvelle session ? Assurez-vous d'avoir téléchargé les données.")) {
+      if (confirm('Êtes-vous sûr de vouloir passer au participant suivant ?')) {
         resetSession();
+      }
+    });
+
+    // 24. Prevent accidental tab reload/close during an active participant run
+    window.addEventListener('beforeunload', (e) => {
+      const inActiveSession =
+        Boolean(selectedParticipant) &&
+        currentStage !== 'setup' &&
+        currentStage !== 'finish';
+      if (inActiveSession) {
+        e.preventDefault();
+        e.returnValue = '';
       }
     });
   }
@@ -728,6 +1408,13 @@
   }
 
   function finishPracticeReading() {
+    if (!trialStartTime) return;
+    if (selectedPracticeIndices.size === 0) {
+      if (!confirm("Vous n'avez sélectionné aucune erreur dans le texte d'entraînement. Voulez-vous tout de même continuer ?")) {
+        return;
+      }
+    }
+
     trialStartTime = null;
     const practiceDoc = textsData.texts.find(t => t.id === 'practice');
     const detectedErrorIds = new Set();
@@ -770,7 +1457,6 @@
       click_events: [...currentPracticeClicks]
     };
 
-    // Render practice quiz questions and prepare intro screen
     renderQuizForm(practiceDoc.quiz, practiceQuizContainer);
     showScreen('practiceQuizIntro');
   }
@@ -788,7 +1474,6 @@
     sessionData.practice_results.quiz_score = quizScore;
     sessionData.practice_results.quiz_total = practiceDoc.quiz.length;
 
-    // Populate debrief stats screen smoothly without alerts
     if (practiceDebriefStats) {
       practiceDebriefStats.innerHTML = `
         <ul style="padding-left: 20px; line-height: 1.8; margin-top: 8px;">
@@ -817,6 +1502,7 @@
 
     if (cond.tts_active) {
       instructionTtsNotice.classList.remove('hidden');
+      preloadAudioTrack(participantConfig.text_order[blockIdx]);
     } else {
       instructionTtsNotice.classList.add('hidden');
     }
@@ -837,11 +1523,15 @@
 
     selectedTokenIndices.clear();
     currentTrialClicks = [];
+    currentTtsEvents = [];
 
     trialBlockTag.textContent = `Bloc ${blockIdx + 1}/3`;
     trialConditionTag.textContent = cond.name;
     trialTextTitle.textContent = textDoc.title;
     trialCounter.textContent = '0 mot sélectionné';
+    if (trialTimer) {
+      trialTimer.textContent = 'Temps : 00:00';
+    }
 
     if (ttsTrialSpeedBadge) {
       ttsTrialSpeedBadge.textContent = `Vitesse : ${currentTtsRate.toFixed(2).replace(/\.?0+$/, '')}x`;
@@ -852,18 +1542,18 @@
       trialCounter.textContent = `${count} mot${count > 1 ? 's' : ''} sélectionné${count > 1 ? 's' : ''}`;
     });
 
-    // TTS Setup
+    // High precision timer start
+    trialStartTime = performance.now();
+    startTimerDisplay();
+
+    // TTS Setup (pre-recorded MP3)
     if (cond.tts_active) {
       ttsControlBar.classList.remove('hidden');
-      startTtsReading(textDoc.rawText);
+      startTtsReading(textDoc.id);
     } else {
       ttsControlBar.classList.add('hidden');
       stopTtsReading();
     }
-
-    // High precision timer start
-    trialStartTime = performance.now();
-    startTimerDisplay();
 
     showScreen('trial');
   }
@@ -871,7 +1561,7 @@
   function startTimerDisplay() {
     clearInterval(timerInterval);
     timerInterval = setInterval(() => {
-      if (!trialStartTime) return;
+      if (!trialStartTime || !trialTimer) return;
       const elapsedMs = performance.now() - trialStartTime;
       const totalSec = Math.floor(elapsedMs / 1000);
       const min = Math.floor(totalSec / 60);
@@ -886,13 +1576,38 @@
   }
 
   function finishTrialReading() {
-    stopTimerDisplay();
-    stopTtsReading();
+    if (!trialStartTime) return;
 
-    const elapsedSeconds = ((performance.now() - trialStartTime) / 1000).toFixed(2);
-    trialStartTime = null;
     const condCode = participantConfig.condition_order[currentBlockIndex];
     const cond = latinSquareData.conditions[condCode];
+
+    if (selectedTokenIndices.size === 0) {
+      if (!confirm("Vous n'avez sélectionné aucune erreur dans ce texte. Êtes-vous sûr de vouloir terminer la relecture ?")) {
+        return;
+      }
+    }
+
+    const remainingAudioSec = activeAudio && Number.isFinite(activeAudio.duration)
+      ? Math.max(0, activeAudio.duration - (activeAudio.currentTime || 0))
+      : 0;
+    if (
+      cond.tts_active &&
+      (ttsState === 'playing' || ttsState === 'paused') &&
+      (remainingAudioSec > 2.0 || (activeAudio && !Number.isFinite(activeAudio.duration)))
+    ) {
+      if (!confirm("La lecture audio n'est pas encore terminée. Êtes-vous sûr de vouloir terminer la relecture maintenant ?")) {
+        return;
+      }
+    }
+
+    stopTimerDisplay();
+    const elapsedSeconds = ((performance.now() - trialStartTime) / 1000).toFixed(2);
+    if (cond.tts_active && ttsState !== 'ended') {
+      logTtsEvent('stopped_by_user');
+    }
+    stopTtsReading();
+    trialStartTime = null;
+
     const textId = participantConfig.text_order[currentBlockIndex];
     const textDoc = textsData.texts.find(t => t.id === textId);
 
@@ -917,8 +1632,6 @@
             explanation: tok.error_data ? tok.error_data.explanation : ''
           });
         }
-        // If already in detectedErrorIds, it is a click on another acceptable word of the same error
-        // (e.g. 2nd word of "pour pour" or "travaillé" in "a travaillé") -> NOT a false positive.
       } else {
         falsePositivesList.push({
           index: tok.index,
@@ -933,13 +1646,14 @@
     const falseNegatives = Math.max(0, totalErrors - truePositives);
     const detectionRate = totalErrors > 0 ? ((truePositives / totalErrors) * 100).toFixed(1) : '0.0';
 
-    // Record initial trial object
     const trialRecord = {
       block_index: currentBlockIndex + 1,
       condition_code: condCode,
       condition_name: cond.name,
       tts_rate: cond.tts_active ? currentTtsRate : null,
       tts_volume: cond.tts_active ? currentTtsVolume : null,
+      tts_voice: cond.tts_active ? getActiveVoiceLabel() : null,
+      tts_events: cond.tts_active ? [...currentTtsEvents] : [],
       text_id: textId,
       text_title: textDoc.title,
       reading_time_seconds: parseFloat(elapsedSeconds),
@@ -964,14 +1678,12 @@
     sessionData.trials[currentBlockIndex] = trialRecord;
     autoSaveSession();
 
-    // Prepare Quiz Screen and Transition
     if (trialQuizIntroIndicator) {
       trialQuizIntroIndicator.textContent = `Bloc ${currentBlockIndex + 1} sur 3 — Relecture terminée (${cond.name})`;
     }
     quizBlockIndicator.textContent = `Bloc ${currentBlockIndex + 1} sur 3 — Quiz de rétention (${cond.name})`;
     renderQuizForm(textDoc.quiz, trialQuizContainer);
-    
-    // Smooth transition screen before quiz
+
     showScreen('trialQuizIntro');
   }
 
@@ -999,7 +1711,6 @@
     sessionData.trials[currentBlockIndex].quiz_answers = answersList;
     autoSaveSession();
 
-    // Prepare Rating Transition Screen
     const condCode = participantConfig.condition_order[currentBlockIndex];
     const cond = latinSquareData.conditions[condCode];
 
@@ -1031,9 +1742,7 @@
     sessionData.trials[currentBlockIndex].comments = commentsVal;
     autoSaveSession();
 
-    // Check if more blocks remain
     if (currentBlockIndex < 2) {
-      // Show Inter-block Pause Screen
       if (interblockStepIndicator) {
         interblockStepIndicator.textContent = `Pause entre les blocs (${currentBlockIndex + 1} / 3)`;
       }
@@ -1048,7 +1757,6 @@
       }
       showScreen('interblock');
     } else {
-      // Finished all 3 blocks -> Go to Participant Ranking Screen first (no results shown)
       sessionData.end_time = new Date().toISOString();
       autoSaveSession();
       goToRankingScreen();
@@ -1082,7 +1790,7 @@
 
     if (!r1 || !r2 || !r3) {
       if (rankingErrorMsg) {
-        rankingErrorMsg.textContent = "Veuillez choisir une modalité pour chacune des trois places (1ère, 2e et 3e place).";
+        rankingErrorMsg.textContent = 'Veuillez choisir une modalité pour chacune des trois places (1ère, 2e et 3e place).';
         rankingErrorMsg.classList.remove('hidden');
       }
       return;
@@ -1090,7 +1798,7 @@
 
     if (r1 === r2 || r1 === r3 || r2 === r3) {
       if (rankingErrorMsg) {
-        rankingErrorMsg.textContent = "Attention : chaque place (1ère, 2e, 3e) doit avoir une modalité différente.";
+        rankingErrorMsg.textContent = 'Attention : chaque place (1ère, 2e, 3e) doit avoir une modalité différente.';
         rankingErrorMsg.classList.remove('hidden');
       }
       return;
@@ -1098,35 +1806,34 @@
 
     if (rankingErrorMsg) rankingErrorMsg.classList.add('hidden');
 
+    const nowIso = new Date().toISOString();
     sessionData.final_ranking = {
       rank_1: r1,
       rank_2: r2,
       rank_3: r3,
       comment: comment
     };
-    sessionData.end_time = new Date().toISOString();
-
-    const conditionLabels = {
-      SIL: 'Lecture silencieuse',
-      HAUTE: 'Lecture à voix haute',
-      TTS: 'TTS bimodal (synthèse vocale + écran)'
-    };
+    sessionData.ranking_completed_at = nowIso;
+    sessionData.end_time = sessionData.end_time || nowIso;
 
     if (rankingRecapText) {
       rankingRecapText.innerHTML = `
-        <strong>1ère place :</strong> ${conditionLabels[r1] || r1} &nbsp;|&nbsp;
-        <strong>2e place :</strong> ${conditionLabels[r2] || r2} &nbsp;|&nbsp;
-        <strong>3e place :</strong> ${conditionLabels[r3] || r3}
-        ${comment ? `<br><span style="color:#555; display:inline-block; margin-top:5px;">Commentaire du participant : <em>« ${comment} »</em></span>` : ''}
+        <strong>1ère place :</strong> ${escapeHtml(CONDITION_LABELS[r1] || r1)} &nbsp;|&nbsp;
+        <strong>2e place :</strong> ${escapeHtml(CONDITION_LABELS[r2] || r2)} &nbsp;|&nbsp;
+        <strong>3e place :</strong> ${escapeHtml(CONDITION_LABELS[r3] || r3)}
+        ${comment ? `<br><span style="color:#555; display:inline-block; margin-top:5px;">Commentaire du participant : <em>« ${escapeHtml(comment)} »</em></span>` : ''}
       `;
     }
 
-    autoSaveSession();
-    renderSummaryTable();
-    showScreen('finish');
+    if (experimenterPanel) {
+      experimenterPanel.open = false;
+    }
+
+    autoSaveSession({ downloadedOffline: false });
+    openInterviewGuideScreen();
   }
 
-  function saveInterviewNotes() {
+  function syncInterviewAnswersFromDom() {
     sessionData.interview_answers = {
       q1_habitudes: intwQ1 ? intwQ1.value.trim() : '',
       q2_usage_tts_passe: intwQ2 ? intwQ2.value.trim() : '',
@@ -1135,13 +1842,48 @@
       q5_difficulte_textes: intwQ5 ? intwQ5.value.trim() : '',
       q6_ajout_remarques: intwQ6 ? intwQ6.value.trim() : ''
     };
-    autoSaveSession();
+  }
+
+  async function saveInterviewNotes() {
+    clearTimeout(interviewAutoSaveTimer);
+    syncInterviewAnswersFromDom();
+    await autoSaveSession({ downloadedOffline: false });
     if (interviewSaveStatus) {
-      interviewSaveStatus.textContent = "Notes d'entrevue enregistrées avec succès dans le CSV et JSON.";
+      interviewSaveStatus.textContent = isServerConnected
+        ? "Notes d'entrevue enregistrées sur disque (JSON et CSV)."
+        : "Notes intermédiaires sauvegardées dans le navigateur (incluses dans le téléchargement final ci-dessous).";
       setTimeout(() => {
         interviewSaveStatus.textContent = '';
-      }, 4000);
+      }, 4500);
     }
+  }
+
+  async function completeInterviewAndFinish() {
+    if (checkInterviewDone && !checkInterviewDone.checked) return;
+    clearTimeout(interviewAutoSaveTimer);
+    syncInterviewAnswersFromDom();
+
+    const nowIso = new Date().toISOString();
+    sessionData.interview_completed = true;
+    sessionData.interview_completed_at = sessionData.interview_completed_at || nowIso;
+    sessionData.end_time = nowIso;
+
+    if (experimenterPanel) {
+      experimenterPanel.open = false;
+    }
+
+    renderSummaryTable();
+    renderFinishChecklist(sessionData);
+    updateDownloadButtonLabels(sessionData.participant_id);
+
+    let offlineDownloaded = false;
+    if (!isServerConnected) {
+      downloadSessionLogs();
+      offlineDownloaded = true;
+    }
+
+    await autoSaveSession({ downloadedOffline: offlineDownloaded });
+    showScreen('finish');
   }
 
   function renderSummaryTable() {
@@ -1149,124 +1891,191 @@
     sessionData.trials.forEach(trial => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><strong>Bloc ${trial.block_index}</strong></td>
-        <td>${trial.condition_name} (${trial.condition_code})</td>
-        <td>${trial.text_id}</td>
+        <td><strong>Bloc ${escapeHtml(trial.block_index)}</strong></td>
+        <td>${escapeHtml(trial.condition_name)} (${escapeHtml(trial.condition_code)})</td>
+        <td>${escapeHtml(trial.text_id)}</td>
         <td>${(typeof trial.reading_time_seconds === 'number' ? trial.reading_time_seconds : parseFloat(trial.reading_time_seconds || 0)).toFixed(1)} s</td>
-        <td><strong>${trial.true_positives}</strong> / ${trial.total_errors}</td>
-        <td>${trial.false_positives}</td>
-        <td>${trial.detection_rate_percent}%</td>
-        <td>${trial.quiz_score} / ${trial.quiz_total}</td>
-        <td>${trial.agreabilite || '-'} / 5</td>
-        <td>${trial.effort || '-'} / 5</td>
+        <td><strong>${escapeHtml(trial.true_positives)}</strong> / ${escapeHtml(trial.total_errors)}</td>
+        <td>${escapeHtml(trial.false_positives)}</td>
+        <td>${escapeHtml(trial.detection_rate_percent)}%</td>
+        <td>${escapeHtml(trial.quiz_score)} / ${escapeHtml(trial.quiz_total)}</td>
+        <td>${escapeHtml(trial.agreabilite || '-')} / 5</td>
+        <td>${escapeHtml(trial.effort || '-')} / 5</td>
       `;
       summaryTableBody.appendChild(tr);
     });
   }
 
-  async function autoSaveSession() {
+  function updateFinalSaveDisplay(statusHtml, detailHtml) {
+    if (finalSaveStatus && statusHtml !== undefined) {
+      finalSaveStatus.innerHTML = statusHtml;
+    }
+    if (finalSaveDetail && detailHtml !== undefined) {
+      finalSaveDetail.innerHTML = detailHtml;
+    }
+  }
+
+  function getServerSaveDetailHtml(pid) {
+    const safePid = escapeHtml(pid || 'PXX');
+    return `Les données codées sont enregistrées localement dans <code>data_output/raw_json/session_${safePid}.json</code> et consolidées dans <code>data_output/csv/all_participants_summary.csv</code>.`;
+  }
+
+  function getOfflineSaveDetailHtml(pid) {
+    const safePid = escapeHtml(pid || 'PXX');
+    return `Mode sans serveur (données 100 % locales, aucun envoi réseau) : vérifiez le dossier <em>Téléchargements</em> pour <code>session_${safePid}.json</code> et <code>summary_${safePid}.csv</code>. Si le navigateur demande d'autoriser les téléchargements multiples pour le CSV, cliquez sur « Autoriser », ou utilisez les boutons de téléchargement ci-dessous.`;
+  }
+
+  function downloadSessionLogs() {
+    downloadJsonData();
+    downloadCsvData();
+  }
+
+  async function autoSaveSession(options = {}) {
     try {
-      if (selectedParticipant) {
-        // 1. Sauvegarde locale dans le navigateur
-        localStorage.setItem(`IFT6075_${selectedParticipant}`, JSON.stringify(sessionData));
+      if (!selectedParticipant) return;
+      const downloadedOffline = Boolean(options && options.downloadedOffline);
+      const pidCode = escapeHtml(selectedParticipant);
 
-        const allKey = 'IFT6075_ALL_PARTICIPANTS';
-        let allLog = {};
-        try {
-          allLog = JSON.parse(localStorage.getItem(allKey)) || {};
-        } catch (_) {}
-        allLog[selectedParticipant] = sessionData;
-        localStorage.setItem(allKey, JSON.stringify(allLog));
+      // 1. Sauvegarde locale dans le navigateur
+      localStorage.setItem(`IFT6075_${selectedParticipant}`, JSON.stringify(sessionData));
 
-        // 2. Envoi automatique au serveur local pour écriture disque dans data_output/
-        try {
-          const res = await fetch('/api/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(sessionData)
-          });
-          if (res.ok) {
-            const data = await res.json();
+      const allKey = 'IFT6075_ALL_PARTICIPANTS';
+      let allLog = {};
+      try {
+        allLog = JSON.parse(localStorage.getItem(allKey)) || {};
+      } catch (_) {}
+      allLog[selectedParticipant] = sessionData;
+      localStorage.setItem(allKey, JSON.stringify(allLog));
+
+      // 2. Sans serveur local (ex. GitHub Pages ou file://), ne pas appeler /api/save
+      if (!isServerConnected) {
+        footerStatus.textContent = downloadedOffline
+          ? `Logs JSON/CSV téléchargés (${selectedParticipant})`
+          : `Sauvegarde locale OK (${selectedParticipant})`;
+        const hasFinished = Boolean(
+          sessionData.final_ranking &&
+          sessionData.final_ranking.rank_1 &&
+          sessionData.interview_completed
+        );
+        const statusMsg = downloadedOffline
+          ? `<strong>Téléchargement automatique déclenché :</strong> <code>session_${pidCode}.json</code> et <code>summary_${pidCode}.csv</code> enregistrés sur cet ordinateur (et sauvegardés dans le navigateur).`
+          : hasFinished
+            ? `<strong>Sauvegarde locale mise à jour (<code>localStorage</code>) :</strong> utilisez les boutons ci-dessous pour télécharger les données complètes à jour.`
+            : `<strong>Mode sans serveur (local) :</strong> session sauvegardée dans le navigateur (<code>localStorage</code>). Les fichiers JSON et CSV complets seront téléchargés automatiquement après l'entrevue.`;
+        updateFinalSaveDisplay(statusMsg, getOfflineSaveDetailHtml(selectedParticipant));
+        return;
+      }
+
+      // 3. Envoi automatique au serveur local pour écriture disque dans data_output/
+      const payload = pendingArchiveOnFirstSave
+        ? Object.assign({ _archive_previous: true }, sessionData)
+        : sessionData;
+      const serverDetail = getServerSaveDetailHtml(selectedParticipant);
+
+      try {
+        const res = await fetch('/api/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          pendingArchiveOnFirstSave = false;
+          if (data.warning) {
+            footerStatus.textContent = `Attention CSV : ${data.warning}`;
+            updateFinalSaveDisplay(`<strong>Attention :</strong> ${escapeHtml(data.warning)}`, serverDetail);
+          } else {
             footerStatus.textContent = `Sauvegarde automatique OK : ${data.json_file}`;
+            updateFinalSaveDisplay(
+              `<strong>Sauvegarde automatique réussie :</strong> <code>${escapeHtml(data.json_file)}</code> et <code>${escapeHtml(data.csv_file)}</code> enregistrés sur disque.`,
+              serverDetail
+            );
           }
-        } catch (_) {
-          // Mode autonome hors serveur (file:///)
-          footerStatus.textContent = `Sauvegarde locale OK (${selectedParticipant})`;
+        } else {
+          footerStatus.textContent = `Sauvegarde locale uniquement (erreur serveur ${res.status})`;
+          updateFinalSaveDisplay(
+            `<strong>Attention :</strong> le serveur a renvoyé une erreur (${res.status}). Téléchargez le JSON/CSV manuellement ci-dessous.`,
+            getOfflineSaveDetailHtml(selectedParticipant)
+          );
         }
+      } catch (_) {
+        footerStatus.textContent = `Sauvegarde locale OK (${selectedParticipant})`;
+        updateFinalSaveDisplay(
+          `<strong>Serveur local inaccessible :</strong> session enregistrée dans le navigateur (<code>localStorage</code>). Ouvrez l'espace expérimentateur pour télécharger le JSON et le CSV.`,
+          getOfflineSaveDetailHtml(selectedParticipant)
+        );
       }
     } catch (e) {
       console.warn('Erreur lors de la sauvegarde:', e);
     }
   }
 
-  function downloadJsonData() {
-    const filename = `session_${sessionData.participant_id || 'PXX'}.json`;
-    const jsonStr = JSON.stringify(sessionData, null, 2);
-    downloadBlob(jsonStr, filename, 'application/json');
+  const CSV_EXPORT_HEADERS = [
+    'Participant',
+    'Age',
+    'Genre',
+    'Confort_Francais_1to5',
+    'Confort_Revision_1to5',
+    'Frequence_Lecture_1to5',
+    'Block_Index',
+    'Condition_Code',
+    'Condition_Name',
+    'TTS_Rate',
+    'TTS_Volume',
+    'TTS_Voice',
+    'Text_ID',
+    'Reading_Time_s',
+    'Total_Words',
+    'Planted_Errors',
+    'True_Positives',
+    'False_Positives',
+    'False_Negatives',
+    'Detection_Rate_pct',
+    'Quiz_Retention_Score',
+    'Quiz_Retention_Total',
+    'Agreabilite_1to5',
+    'Effort_1to5',
+    'Trial_Comments',
+    'Overall_Rank1',
+    'Overall_Rank2',
+    'Overall_Rank3',
+    'Final_Comments',
+    'Interview_Q1_Habitudes',
+    'Interview_Q2_Usage_TTS_Passe',
+    'Interview_Q3_Avantages_Inconvenients',
+    'Interview_Q4_Demarquee',
+    'Interview_Q5_Difficulte_Textes',
+    'Interview_Q6_Ajout_Remarques',
+    'Timestamp_Saved'
+  ];
+
+  function csvEscape(val) {
+    return `"${String(val !== undefined && val !== null ? val : '').replace(/"/g, '""')}"`;
   }
 
-  function downloadCsvData() {
-    const headers = [
-      'Participant',
-      'Age',
-      'Genre',
-      'Confort_Francais_1to5',
-      'Confort_Revision_1to5',
-      'Frequence_Lecture_1to5',
-      'Block_Index',
-      'Condition_Code',
-      'Condition_Name',
-      'TTS_Rate',
-      'TTS_Volume',
-      'Text_ID',
-      'Reading_Time_s',
-      'Total_Words',
-      'Planted_Errors',
-      'True_Positives',
-      'False_Positives',
-      'False_Negatives',
-      'Detection_Rate_pct',
-      'Quiz_Retention_Score',
-      'Quiz_Retention_Total',
-      'Agreabilite_1to5',
-      'Effort_1to5',
-      'Trial_Comments',
-      'Overall_Rank1',
-      'Overall_Rank2',
-      'Overall_Rank3',
-      'Final_Comments',
-      'Interview_Q1_Habitudes',
-      'Interview_Q2_Usage_TTS_Passe',
-      'Interview_Q3_Avantages_Inconvenients',
-      'Interview_Q4_Demarquee',
-      'Interview_Q5_Difficulte_Textes',
-      'Interview_Q6_Ajout_Remarques',
-      'Timestamp_Saved'
-    ];
+  function buildCsvRowsForSession(sess, saveTime) {
+    if (!sess || typeof sess !== 'object') return [];
+    const pre = sess.precondition || {};
+    const rank = sess.final_ranking || {};
+    const intw = sess.interview_answers || {};
+    const pid = sess.participant_id || '';
 
-    const rows = [];
-    rows.push(headers.join(';'));
-
-    const pre = sessionData.precondition || {};
-    const rank = sessionData.final_ranking || {};
-    const intw = sessionData.interview_answers || {};
-    const saveTime = new Date().toISOString();
-
-    sessionData.trials.forEach(trial => {
-      const escape = (val) => `"${String(val !== undefined && val !== null ? val : '').replace(/"/g, '""')}"`;
-      const row = [
-        escape(sessionData.participant_id),
+    return (sess.trials || [])
+      .filter(trial => trial && typeof trial === 'object')
+      .map(trial => [
+        csvEscape(pid),
         pre.age || '',
-        escape(pre.genre),
+        csvEscape(pre.genre),
         pre.confort_francais || '',
         pre.confort_revision || '',
         pre.frequence_lecture || '',
         trial.block_index,
-        escape(trial.condition_code),
-        escape(trial.condition_name),
+        csvEscape(trial.condition_code),
+        csvEscape(trial.condition_name),
         trial.tts_rate || '',
         trial.tts_volume || '',
-        escape(trial.text_id),
+        csvEscape(trial.tts_voice || ''),
+        csvEscape(trial.text_id),
         trial.reading_time_seconds,
         trial.total_words,
         trial.total_errors,
@@ -1278,25 +2087,106 @@
         trial.quiz_total,
         trial.agreabilite || '',
         trial.effort || '',
-        escape(trial.comments),
-        escape(rank.rank_1),
-        escape(rank.rank_2),
-        escape(rank.rank_3),
-        escape(rank.comment),
-        escape(intw.q1_habitudes),
-        escape(intw.q2_usage_tts_passe),
-        escape(intw.q3_avantages_inconvenients),
-        escape(intw.q4_demarquee),
-        escape(intw.q5_difficulte_textes),
-        escape(intw.q6_ajout_remarques),
+        csvEscape(trial.comments),
+        csvEscape(rank.rank_1),
+        csvEscape(rank.rank_2),
+        csvEscape(rank.rank_3),
+        csvEscape(rank.comment),
+        csvEscape(intw.q1_habitudes),
+        csvEscape(intw.q2_usage_tts_passe),
+        csvEscape(intw.q3_avantages_inconvenients),
+        csvEscape(intw.q4_demarquee),
+        csvEscape(intw.q5_difficulte_textes),
+        csvEscape(intw.q6_ajout_remarques),
         saveTime
-      ];
-      rows.push(row.join(';'));
-    });
+      ].join(';'));
+  }
 
-    const csvContent = "\uFEFF" + rows.join('\r\n'); // UTF-8 BOM for Excel compatibility
+  function getAllBrowserSessionsMap() {
+    const sessions = {};
+    try {
+      const allRaw = localStorage.getItem('IFT6075_ALL_PARTICIPANTS');
+      const parsedAll = allRaw ? JSON.parse(allRaw) : null;
+      if (parsedAll && typeof parsedAll === 'object') {
+        Object.keys(parsedAll).forEach(k => {
+          if (parsedAll[k] && typeof parsedAll[k] === 'object') {
+            sessions[k] = parsedAll[k];
+          }
+        });
+      }
+    } catch (_) {}
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      const match = key && /^IFT6075_(P\d+)$/.exec(key);
+      if (!match) continue;
+      const pid = match[1];
+      if (!sessions[pid]) {
+        const single = getLocalSession(pid);
+        if (single) sessions[pid] = single;
+      }
+    }
+
+    if (sessionData && sessionData.participant_id) {
+      syncInterviewAnswersFromDom();
+      sessions[sessionData.participant_id] = sessionData;
+    }
+
+    const sorted = {};
+    Object.keys(sessions).sort().forEach(pid => {
+      sorted[pid] = sessions[pid];
+    });
+    return sorted;
+  }
+
+  function downloadJsonData() {
+    syncInterviewAnswersFromDom();
+    const filename = `session_${sessionData.participant_id || 'PXX'}.json`;
+    const jsonStr = JSON.stringify(sessionData, null, 2);
+    downloadBlob(jsonStr, filename, 'application/json');
+  }
+
+  function downloadCsvData() {
+    syncInterviewAnswersFromDom();
+    const saveTime = new Date().toISOString();
+    const rows = [
+      CSV_EXPORT_HEADERS.join(';'),
+      ...buildCsvRowsForSession(sessionData, saveTime)
+    ];
+    const csvContent = '\uFEFF' + rows.join('\r\n');
     const filename = `summary_${sessionData.participant_id || 'PXX'}.csv`;
     downloadBlob(csvContent, filename, 'text/csv;charset=utf-8;');
+  }
+
+  function downloadAllBrowserJsonData() {
+    const sessions = getAllBrowserSessionsMap();
+    const pids = Object.keys(sessions);
+    if (pids.length === 0) {
+      alert('Aucune session sauvegardée dans ce navigateur.');
+      return;
+    }
+    const payload = {
+      exported_at: new Date().toISOString(),
+      participant_count: pids.length,
+      sessions
+    };
+    downloadBlob(JSON.stringify(payload, null, 2), 'all_sessions_complete_browser.json', 'application/json');
+  }
+
+  function downloadAllBrowserCsvData() {
+    const sessions = getAllBrowserSessionsMap();
+    const pids = Object.keys(sessions);
+    if (pids.length === 0) {
+      alert('Aucune session sauvegardée dans ce navigateur.');
+      return;
+    }
+    const saveTime = new Date().toISOString();
+    const rows = [CSV_EXPORT_HEADERS.join(';')];
+    pids.forEach(pid => {
+      rows.push(...buildCsvRowsForSession(sessions[pid], saveTime));
+    });
+    const csvContent = '\uFEFF' + rows.join('\r\n');
+    downloadBlob(csvContent, 'all_participants_summary_browser.csv', 'text/csv;charset=utf-8;');
   }
 
   function downloadBlob(content, filename, mimeType) {
@@ -1308,31 +2198,34 @@
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
   }
 
   function resetSession() {
+    clearTimeout(interviewAutoSaveTimer);
     stopTimerDisplay();
     stopTtsReading();
     selectedParticipant = null;
     participantConfig = null;
+    pendingArchiveOnFirstSave = false;
     currentBlockIndex = 0;
     trialStartTime = null;
     currentTrialClicks = [];
     currentPracticeClicks = [];
-    sessionData = {
-      participant_id: null,
-      start_time: null,
-      end_time: null,
-      precondition: null,
-      practice_results: null,
-      trials: [],
-      final_ranking: null,
-      interview_answers: null
-    };
+    currentTtsEvents = [];
+    sessionData = createEmptySessionData();
+
     selectParticipant.value = '';
     setupDetails.classList.add('hidden');
+    if (existingSessionBanner) existingSessionBanner.classList.add('hidden');
     btnStartExperiment.disabled = true;
+    btnStartExperiment.textContent = 'Suivant — Étape 1 : Consentement (FIC)';
+
+    if (consentParticipantCode) consentParticipantCode.textContent = 'PXX';
+    if (consentParticipantCodeInline) consentParticipantCodeInline.textContent = 'PXX';
+    if (consentParticipantCodeConfirm) consentParticipantCodeConfirm.textContent = 'PXX';
+    if (checkConsentSigned) checkConsentSigned.checked = false;
+    if (btnConsentNext) btnConsentNext.disabled = true;
 
     if (document.getElementById('precondition-form')) {
       document.getElementById('precondition-form').reset();
@@ -1342,15 +2235,32 @@
     }
     if (prefComments) prefComments.value = '';
     if (rankingRecapText) rankingRecapText.textContent = '';
+
+    if (interviewParticipantCode) interviewParticipantCode.textContent = 'PXX';
+    if (interviewParticipantCodeInline) interviewParticipantCodeInline.textContent = 'PXX';
+    if (interviewParticipantCodeConfirm) interviewParticipantCodeConfirm.textContent = 'PXX';
     if (intwQ1) intwQ1.value = '';
     if (intwQ2) intwQ2.value = '';
     if (intwQ3) intwQ3.value = '';
     if (intwQ4) intwQ4.value = '';
     if (intwQ5) intwQ5.value = '';
     if (intwQ6) intwQ6.value = '';
+    if (interviewNotesDetails) interviewNotesDetails.open = false;
     if (interviewSaveStatus) interviewSaveStatus.textContent = '';
+    if (checkInterviewDone) checkInterviewDone.checked = false;
+    if (btnFinishInterview) btnFinishInterview.disabled = true;
+    if (finishChecklist) finishChecklist.innerHTML = '';
+
+    updateDownloadButtonLabels('PXX');
+    if (ttsTestStatus) ttsTestStatus.textContent = '';
+    if (experimenterPanel) experimenterPanel.open = false;
+
+    updateTtsSpeed(1.0);
+    updateTtsVolume(1.0);
+    updateCalibrationButtonLabel();
 
     showScreen('setup');
+    refreshSetupStatus();
   }
 
   // ==========================================================
@@ -1379,7 +2289,6 @@
           span.classList.add('selected');
         }
 
-        // Millisecond precision click event logging
         const clickEvent = {
           timestamp_iso: new Date().toISOString(),
           timestamp_ms: Date.now(),
@@ -1402,7 +2311,6 @@
       });
 
       containerElement.appendChild(span);
-      // Append a space between tokens for natural typography
       containerElement.appendChild(document.createTextNode(' '));
     });
   }
