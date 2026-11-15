@@ -350,6 +350,10 @@ textarea.form-control {
   border-radius: 3px;
 }
 
+.sentence-lead {
+  white-space: nowrap;
+}
+
 .sentence-play-btn {
   display: inline-flex;
   align-items: center;

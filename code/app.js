@@ -2540,7 +2540,6 @@
         });
 
         sentenceBtnByIndex[sentInfo.sentence_index] = playBtn;
-        sentenceSpan.appendChild(playBtn);
 
         sentenceSpan.addEventListener('contextmenu', (e) => {
           e.preventDefault();
@@ -2548,14 +2547,27 @@
           handleSentenceSeek(sentInfo, 'context_menu');
         });
 
+        let leadWrapped = false;
         for (let tIdx = sentInfo.token_start; tIdx <= sentInfo.token_end; tIdx++) {
           const tok = doc.tokens[tIdx];
           if (!tok) continue;
           const tokEl = createTokenElement(tok, doc, selectionSet, onCountChange, sentInfo, handleSentenceSeek);
-          sentenceSpan.appendChild(tokEl);
+          if (!leadWrapped) {
+            const leadSpan = document.createElement('span');
+            leadSpan.className = 'sentence-lead';
+            leadSpan.appendChild(playBtn);
+            leadSpan.appendChild(tokEl);
+            sentenceSpan.appendChild(leadSpan);
+            leadWrapped = true;
+          } else {
+            sentenceSpan.appendChild(tokEl);
+          }
           if (tIdx < sentInfo.token_end) {
             sentenceSpan.appendChild(document.createTextNode(' '));
           }
+        }
+        if (!leadWrapped) {
+          sentenceSpan.appendChild(playBtn);
         }
 
         containerElement.appendChild(sentenceSpan);
