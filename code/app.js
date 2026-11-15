@@ -36,6 +36,7 @@
     text2: 'audio/text2.mp3',
     text3: 'audio/text3.mp3'
   };
+  const audioTimings = window.EMBEDDED_AUDIO_TIMINGS || {};
   const preloadedAudio = {};
   let activeAudio = null;
   let activeTrackKey = null;
@@ -46,6 +47,9 @@
   let ttsState = 'idle'; // 'idle' | 'playing' | 'paused' | 'ended' | 'error'
   let currentTtsEvents = [];
   let isTestTtsPlaying = false;
+  let isSeekingSlider = false;
+  let currentSentenceTimingList = [];
+  let sentenceBtnByIndex = [];
   let interviewAutoSaveTimer = null;
 
   // Session Results
@@ -159,7 +163,10 @@
   const ttsControlBar = document.getElementById('tts-control-bar');
   const ttsAudioIndicator = document.getElementById('tts-audio-indicator');
   const ttsAudioDetail = document.getElementById('tts-audio-detail');
-  const ttsTrialSpeedBadge = document.getElementById('tts-trial-speed-badge');
+  const ttsTrialSpeedSelect = document.getElementById('tts-trial-speed-select');
+  const ttsSeekSlider = document.getElementById('tts-seek-slider');
+  const ttsTimeCurrent = document.getElementById('tts-time-current');
+  const ttsTimeDuration = document.getElementById('tts-time-duration');
   const btnTtsPause = document.getElementById('btn-tts-pause');
   const btnTtsRestart = document.getElementById('btn-tts-restart');
   const trialTextTitle = document.getElementById('trial-text-title');
@@ -639,6 +646,81 @@
     return `${rate.toFixed(2).replace(/\.?0+$/, '')}x`;
   }
 
+  function formatAudioTime(seconds) {
+    if (!Number.isFinite(seconds) || seconds < 0) return '00:00';
+    const whole = Math.floor(seconds);
+    const min = Math.floor(whole / 60);
+    const sec = whole % 60;
+    return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  }
+
+  function syncTrialSpeedSelect(rate) {
+    if (!ttsTrialSpeedSelect) return;
+    const normalized = String(Math.round(rate * 100) / 100);
+    let matched = false;
+    for (let i = 0; i < ttsTrialSpeedSelect.options.length; i++) {
+      if (Math.abs(parseFloat(ttsTrialSpeedSelect.options[i].value) - rate) < 0.005) {
+        ttsTrialSpeedSelect.selectedIndex = i;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      const opt = document.createElement('option');
+      opt.value = normalized;
+      opt.textContent = formatSpeedBadge(rate);
+      ttsTrialSpeedSelect.appendChild(opt);
+      ttsTrialSpeedSelect.value = normalized;
+    }
+  }
+
+  function clearActiveSentenceHighlight() {
+    sentenceBtnByIndex.forEach(btn => {
+      if (btn) btn.classList.remove('active-sentence');
+    });
+  }
+
+  function updateTtsProgressUi() {
+    const cur = activeAudio && Number.isFinite(activeAudio.currentTime) ? activeAudio.currentTime : 0;
+    const dur = activeAudio && Number.isFinite(activeAudio.duration) ? activeAudio.duration : 0;
+
+    if (ttsTimeCurrent && !isSeekingSlider) {
+      ttsTimeCurrent.textContent = formatAudioTime(cur);
+    }
+    if (ttsTimeDuration) {
+      ttsTimeDuration.textContent = formatAudioTime(dur);
+    }
+    if (ttsSeekSlider && !isSeekingSlider) {
+      if (dur > 0) {
+        ttsSeekSlider.max = dur.toFixed(2);
+        ttsSeekSlider.value = Math.min(dur, cur).toFixed(2);
+        ttsSeekSlider.disabled = false;
+      } else {
+        ttsSeekSlider.value = 0;
+        ttsSeekSlider.disabled = true;
+      }
+    }
+
+    if (!currentSentenceTimingList.length || ttsState === 'idle' || ttsState === 'ended' || ttsState === 'error') {
+      clearActiveSentenceHighlight();
+      return;
+    }
+
+    let activeIdx = 0;
+    for (let i = 0; i < currentSentenceTimingList.length; i++) {
+      if (currentSentenceTimingList[i].start_s <= cur + 0.04) {
+        activeIdx = currentSentenceTimingList[i].sentence_index;
+      } else {
+        break;
+      }
+    }
+    sentenceBtnByIndex.forEach((btn, idx) => {
+      if (!btn) return;
+      if (idx === activeIdx) btn.classList.add('active-sentence');
+      else btn.classList.remove('active-sentence');
+    });
+  }
+
   function applyAudioSettings(audio) {
     if (!audio) return;
     audio.volume = currentTtsVolume;
@@ -729,7 +811,25 @@
     }
   }
 
+  function setTtsPlayingUi() {
+    isTtsPaused = false;
+    ttsState = 'playing';
+    if (ttsAudioIndicator) {
+      ttsAudioIndicator.textContent = 'Lecture en cours';
+      ttsAudioIndicator.className = 'tts-indicator playing';
+    }
+    if (ttsAudioDetail) {
+      ttsAudioDetail.textContent = `Audio pré-enregistré actif (${formatSpeedBadge(currentTtsRate)})`;
+    }
+    syncTrialSpeedSelect(currentTtsRate);
+    if (btnTtsPause) {
+      btnTtsPause.textContent = 'Pause';
+      btnTtsPause.disabled = false;
+    }
+  }
+
   function updateTtsSpeed(newRate) {
+    const previousRate = currentTtsRate;
     currentTtsRate = Math.round(parseFloat(newRate) * 100) / 100;
 
     if (ttsSpeedSlider) ttsSpeedSlider.value = currentTtsRate;
@@ -755,7 +855,20 @@
       });
     }
 
+    syncTrialSpeedSelect(currentTtsRate);
     applyAudioSettings(activeAudio);
+
+    if (trialStartTime && activeTrackKey && activeTrackKey !== 'calibration') {
+      if (ttsAudioDetail && ttsState === 'playing') {
+        ttsAudioDetail.textContent = `Audio pré-enregistré actif (${formatSpeedBadge(currentTtsRate)})`;
+      }
+      if (Math.abs(currentTtsRate - previousRate) > 0.001) {
+        logTtsEvent('speed_change', {
+          previous_rate: previousRate,
+          new_rate: currentTtsRate
+        });
+      }
+    }
   }
 
   function updateTtsVolume(newVol) {
@@ -808,28 +921,23 @@
     const mySession = audioSessionId;
     activeAudio = audio;
     activeTrackKey = textId;
-    ttsState = 'playing';
-    isTtsPaused = false;
+    setTtsPlayingUi();
 
     if (audio.readyState > 0) {
       audio.currentTime = 0;
     }
     applyAudioSettings(audio);
+    updateTtsProgressUi();
 
-    if (ttsAudioIndicator) {
-      ttsAudioIndicator.textContent = 'Lecture en cours';
-      ttsAudioIndicator.className = 'tts-indicator playing';
-    }
-    if (ttsAudioDetail) {
-      ttsAudioDetail.textContent = `Audio pré-enregistré actif (${formatSpeedBadge(currentTtsRate)})`;
-    }
-    if (ttsTrialSpeedBadge) {
-      ttsTrialSpeedBadge.textContent = `Vitesse : ${formatSpeedBadge(currentTtsRate)}`;
-    }
-    if (btnTtsPause) {
-      btnTtsPause.textContent = 'Pause';
-      btnTtsPause.disabled = false;
-    }
+    audio.onloadedmetadata = () => {
+      if (mySession !== audioSessionId || activeAudio !== audio) return;
+      updateTtsProgressUi();
+    };
+
+    audio.ontimeupdate = () => {
+      if (mySession !== audioSessionId || activeAudio !== audio) return;
+      updateTtsProgressUi();
+    };
 
     audio.onended = () => {
       if (mySession !== audioSessionId || activeAudio !== audio) return;
@@ -840,12 +948,13 @@
         ttsAudioIndicator.className = 'tts-indicator';
       }
       if (ttsAudioDetail) {
-        ttsAudioDetail.textContent = 'Lecture audio terminée. Vous pouvez poursuivre ou valider.';
+        ttsAudioDetail.textContent = 'Lecture audio terminée. Vous pouvez poursuivre, cliquer sur ▶ ou valider.';
       }
       if (btnTtsPause) {
         btnTtsPause.textContent = 'Pause';
         btnTtsPause.disabled = true;
       }
+      updateTtsProgressUi();
       logTtsEvent('ended');
       if (onCompleteCallback) onCompleteCallback();
     };
@@ -892,11 +1001,64 @@
     }
   }
 
+  function seekAudioAndPlay(targetTimeSec, eventName, eventExtra) {
+    const textId = participantConfig && participantConfig.text_order[currentBlockIndex];
+    if (!textId || !getAudioTrackSrc(textId)) return;
+
+    if (!activeAudio || activeTrackKey !== textId || ttsState === 'error') {
+      startTtsReading(textId);
+    }
+    const audio = activeAudio;
+    if (!audio) return;
+
+    const mySession = audioSessionId;
+    const applySeek = () => {
+      if (mySession !== audioSessionId || activeAudio !== audio) return;
+      const maxDur = Number.isFinite(audio.duration) ? audio.duration : targetTimeSec;
+      const clamped = Math.max(0, Math.min(targetTimeSec, Math.max(0, maxDur - 0.05)));
+      try {
+        audio.currentTime = clamped;
+      } catch (_) {}
+      updateTtsProgressUi();
+    };
+
+    if (audio.readyState > 0) {
+      applySeek();
+    } else {
+      audio.addEventListener('loadedmetadata', applySeek, { once: true });
+    }
+
+    setTtsPlayingUi();
+    applyAudioSettings(audio);
+    updateTtsProgressUi();
+    logTtsEvent(eventName, Object.assign({
+      target_time_s: Math.round(targetTimeSec * 100) / 100
+    }, eventExtra || {}));
+
+    const playPromise = audio.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch((err) => {
+        if (mySession !== audioSessionId || activeAudio !== audio) return;
+        console.warn('Seek audio play rejected:', err);
+        isTtsPaused = true;
+        ttsState = 'paused';
+        if (btnTtsPause) btnTtsPause.textContent = 'Reprendre';
+        if (ttsAudioIndicator) {
+          ttsAudioIndicator.textContent = 'En pause';
+          ttsAudioIndicator.className = 'tts-indicator paused';
+        }
+      });
+    }
+  }
+
   function stopTtsReading() {
     audioSessionId++;
+    isSeekingSlider = false;
     if (activeAudio) {
       activeAudio.onended = null;
       activeAudio.onerror = null;
+      activeAudio.ontimeupdate = null;
+      activeAudio.onloadedmetadata = null;
       try {
         activeAudio.pause();
         if (activeAudio.readyState > 0) {
@@ -909,6 +1071,13 @@
     ttsState = 'idle';
     isTtsPaused = false;
     isTestTtsPlaying = false;
+    clearActiveSentenceHighlight();
+    if (ttsSeekSlider) {
+      ttsSeekSlider.value = 0;
+      ttsSeekSlider.disabled = true;
+    }
+    if (ttsTimeCurrent) ttsTimeCurrent.textContent = '00:00';
+    if (ttsTimeDuration) ttsTimeDuration.textContent = '00:00';
     if (btnTestTts) {
       btnTestTts.textContent = 'Écouter un extrait de test au casque';
     }
@@ -1202,19 +1371,38 @@
       launchTrial(currentBlockIndex);
     });
 
-    // 11. TTS Pause / Resume Button
+    // 11. TTS Live Speed & Timeline Controls
+    if (ttsTrialSpeedSelect) {
+      ttsTrialSpeedSelect.addEventListener('change', (e) => {
+        updateTtsSpeed(e.target.value);
+      });
+    }
+
+    if (ttsSeekSlider) {
+      ttsSeekSlider.addEventListener('input', (e) => {
+        isSeekingSlider = true;
+        if (ttsTimeCurrent) {
+          ttsTimeCurrent.textContent = formatAudioTime(parseFloat(e.target.value));
+        }
+      });
+      ttsSeekSlider.addEventListener('change', (e) => {
+        isSeekingSlider = false;
+        const target = parseFloat(e.target.value);
+        if (Number.isFinite(target)) {
+          seekAudioAndPlay(target, 'seek_timeline', { trigger: 'slider' });
+        }
+      });
+    }
+
+    // 12. TTS Pause / Resume Button
     btnTtsPause.addEventListener('click', () => {
       if (!activeAudio) return;
       if (ttsState === 'ended' || ttsState === 'idle' || ttsState === 'error') return;
 
       if (isTtsPaused || ttsState === 'paused') {
-        isTtsPaused = false;
-        ttsState = 'playing';
-        btnTtsPause.textContent = 'Pause';
-        ttsAudioIndicator.textContent = 'Lecture en cours';
-        ttsAudioIndicator.className = 'tts-indicator playing';
-        if (ttsAudioDetail) ttsAudioDetail.textContent = `Audio pré-enregistré actif (${formatSpeedBadge(currentTtsRate)})`;
+        setTtsPlayingUi();
         applyAudioSettings(activeAudio);
+        updateTtsProgressUi();
         logTtsEvent('resume');
 
         const playPromise = activeAudio.play();
@@ -1226,6 +1414,7 @@
             btnTtsPause.textContent = 'Reprendre';
             ttsAudioIndicator.textContent = 'En pause';
             ttsAudioIndicator.className = 'tts-indicator paused';
+            updateTtsProgressUi();
           });
         }
       } else {
@@ -1235,7 +1424,8 @@
         btnTtsPause.textContent = 'Reprendre';
         ttsAudioIndicator.textContent = 'En pause';
         ttsAudioIndicator.className = 'tts-indicator paused';
-        if (ttsAudioDetail) ttsAudioDetail.textContent = 'Audio suspendu (cliquez sur Reprendre pour continuer)';
+        if (ttsAudioDetail) ttsAudioDetail.textContent = 'Audio suspendu (cliquez sur Reprendre ou ▶ sur une phrase)';
+        updateTtsProgressUi();
         logTtsEvent('pause');
       }
     });
@@ -1533,14 +1723,18 @@
       trialTimer.textContent = 'Temps : 00:00';
     }
 
-    if (ttsTrialSpeedBadge) {
-      ttsTrialSpeedBadge.textContent = `Vitesse : ${currentTtsRate.toFixed(2).replace(/\.?0+$/, '')}x`;
-    }
+    syncTrialSpeedSelect(currentTtsRate);
 
     // Render interactive clickable tokens
-    renderTextTokens(textDoc, trialReadingArea, selectedTokenIndices, (count) => {
-      trialCounter.textContent = `${count} mot${count > 1 ? 's' : ''} sélectionné${count > 1 ? 's' : ''}`;
-    });
+    renderTextTokens(
+      textDoc,
+      trialReadingArea,
+      selectedTokenIndices,
+      (count) => {
+        trialCounter.textContent = `${count} mot${count > 1 ? 's' : ''} sélectionné${count > 1 ? 's' : ''}`;
+      },
+      { ttsActive: Boolean(cond.tts_active) }
+    );
 
     // High precision timer start
     trialStartTime = performance.now();
@@ -2261,52 +2455,125 @@
   // ==========================================================
   // HELPER RENDERING FUNCTIONS
   // ==========================================================
-  function renderTextTokens(doc, containerElement, selectionSet, onCountChange) {
-    containerElement.innerHTML = '';
-    doc.tokens.forEach(tok => {
-      const span = document.createElement('span');
-      span.className = 'word-token';
-      span.textContent = tok.raw;
-      span.dataset.index = tok.index;
+  function createTokenElement(tok, doc, selectionSet, onCountChange, sentenceInfo, onSentenceSeek) {
+    const span = document.createElement('span');
+    span.className = 'word-token';
+    span.textContent = tok.raw;
+    span.dataset.index = tok.index;
 
-      if (selectionSet.has(tok.index)) {
+    if (selectionSet.has(tok.index)) {
+      span.classList.add('selected');
+    }
+
+    span.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (e.altKey && sentenceInfo && onSentenceSeek) {
+        e.preventDefault();
+        onSentenceSeek(sentenceInfo, 'alt_click');
+        return;
+      }
+
+      const wasSelected = selectionSet.has(tok.index);
+      if (wasSelected) {
+        selectionSet.delete(tok.index);
+        span.classList.remove('selected');
+      } else {
+        selectionSet.add(tok.index);
         span.classList.add('selected');
       }
 
-      span.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const wasSelected = selectionSet.has(tok.index);
-        if (wasSelected) {
-          selectionSet.delete(tok.index);
-          span.classList.remove('selected');
-        } else {
-          selectionSet.add(tok.index);
-          span.classList.add('selected');
+      const clickEvent = {
+        timestamp_iso: new Date().toISOString(),
+        timestamp_ms: Date.now(),
+        relative_time_ms: trialStartTime ? Math.max(0, Math.round(performance.now() - trialStartTime)) : null,
+        token_index: tok.index,
+        word: tok.raw,
+        action: wasSelected ? 'deselect' : 'select',
+        is_error: !!tok.is_error,
+        error_id: tok.error_id || null
+      };
+      if (doc.isPractice) {
+        currentPracticeClicks.push(clickEvent);
+      } else {
+        currentTrialClicks.push(clickEvent);
+      }
+
+      if (onCountChange) {
+        onCountChange(selectionSet.size);
+      }
+    });
+
+    return span;
+  }
+
+  function renderTextTokens(doc, containerElement, selectionSet, onCountChange, options) {
+    containerElement.innerHTML = '';
+    const ttsActive = Boolean(options && options.ttsActive);
+    const sentences = ttsActive && Array.isArray(audioTimings[doc.id]) ? audioTimings[doc.id] : null;
+
+    if (sentences && sentences.length > 0) {
+      currentSentenceTimingList = sentences;
+      sentenceBtnByIndex = [];
+      const handleSentenceSeek = (sentInfo, triggerName) => {
+        seekAudioAndPlay(sentInfo.start_s, 'seek_sentence', {
+          sentence_index: sentInfo.sentence_index,
+          token_start: sentInfo.token_start,
+          trigger: triggerName
+        });
+      };
+
+      sentences.forEach((sentInfo, sPos) => {
+        const sentenceSpan = document.createElement('span');
+        sentenceSpan.className = 'sentence-span';
+        sentenceSpan.dataset.sentenceIndex = sentInfo.sentence_index;
+
+        const playBtn = document.createElement('button');
+        playBtn.type = 'button';
+        playBtn.className = 'sentence-play-btn';
+        playBtn.title = 'Reprendre l\'audio à cette phrase';
+        playBtn.setAttribute('aria-label', `Reprendre l'audio à la phrase ${sentInfo.sentence_index + 1}`);
+        playBtn.innerHTML = '<svg viewBox="0 0 10 10" width="8" height="8" aria-hidden="true"><polygon points="2,1 9,5 2,9" fill="currentColor"></polygon></svg>';
+        playBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleSentenceSeek(sentInfo, 'sentence_btn');
+        });
+
+        sentenceBtnByIndex[sentInfo.sentence_index] = playBtn;
+        sentenceSpan.appendChild(playBtn);
+
+        sentenceSpan.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleSentenceSeek(sentInfo, 'context_menu');
+        });
+
+        for (let tIdx = sentInfo.token_start; tIdx <= sentInfo.token_end; tIdx++) {
+          const tok = doc.tokens[tIdx];
+          if (!tok) continue;
+          const tokEl = createTokenElement(tok, doc, selectionSet, onCountChange, sentInfo, handleSentenceSeek);
+          sentenceSpan.appendChild(tokEl);
+          if (tIdx < sentInfo.token_end) {
+            sentenceSpan.appendChild(document.createTextNode(' '));
+          }
         }
 
-        const clickEvent = {
-          timestamp_iso: new Date().toISOString(),
-          timestamp_ms: Date.now(),
-          relative_time_ms: trialStartTime ? Math.max(0, Math.round(performance.now() - trialStartTime)) : null,
-          token_index: tok.index,
-          word: tok.raw,
-          action: wasSelected ? 'deselect' : 'select',
-          is_error: !!tok.is_error,
-          error_id: tok.error_id || null
-        };
-        if (doc.isPractice) {
-          currentPracticeClicks.push(clickEvent);
-        } else {
-          currentTrialClicks.push(clickEvent);
-        }
-
-        if (onCountChange) {
-          onCountChange(selectionSet.size);
+        containerElement.appendChild(sentenceSpan);
+        if (sPos < sentences.length - 1) {
+          containerElement.appendChild(document.createTextNode(' '));
         }
       });
+      return;
+    }
 
+    currentSentenceTimingList = [];
+    sentenceBtnByIndex = [];
+    doc.tokens.forEach((tok, idx) => {
+      const span = createTokenElement(tok, doc, selectionSet, onCountChange, null, null);
       containerElement.appendChild(span);
-      containerElement.appendChild(document.createTextNode(' '));
+      if (idx < doc.tokens.length - 1) {
+        containerElement.appendChild(document.createTextNode(' '));
+      }
     });
   }
 
