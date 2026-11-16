@@ -97,6 +97,7 @@
     rating: document.getElementById('screen-rating'),
     interblock: document.getElementById('screen-interblock'),
     ranking: document.getElementById('screen-ranking'),
+    interviewHandoff: document.getElementById('screen-interview-handoff'),
     interviewGuide: document.getElementById('screen-interview-guide'),
     finish: document.getElementById('screen-finish')
   };
@@ -160,6 +161,7 @@
   const trialBlockTag = document.getElementById('trial-block-tag');
   const trialConditionTag = document.getElementById('trial-condition-tag');
   const trialTimer = document.getElementById('trial-timer');
+  const trialModeReminder = document.getElementById('trial-mode-reminder');
   const ttsControlBar = document.getElementById('tts-control-bar');
   const ttsAudioIndicator = document.getElementById('tts-audio-indicator');
   const ttsAudioDetail = document.getElementById('tts-audio-detail');
@@ -203,11 +205,13 @@
   const prefComments = document.getElementById('pref-comments');
   const rankingErrorMsg = document.getElementById('ranking-error-msg');
   const btnSaveRanking = document.getElementById('btn-save-ranking');
-  // Interview guide & Finish elements
+  // Interview handoff, guide & Finish elements
+  const handoffParticipantCode = document.getElementById('handoff-participant-code');
+  const handoffParticipantCodeInline = document.getElementById('handoff-participant-code-inline');
+  const btnStartInterviewGuide = document.getElementById('btn-start-interview-guide');
   const interviewParticipantCode = document.getElementById('interview-participant-code');
   const interviewParticipantCodeInline = document.getElementById('interview-participant-code-inline');
   const interviewParticipantCodeConfirm = document.getElementById('interview-participant-code-confirm');
-  const interviewNotesDetails = document.getElementById('interview-notes-details');
   const checkInterviewDone = document.getElementById('check-interview-done');
   const btnFinishInterview = document.getElementById('btn-finish-interview');
   const finishChecklist = document.getElementById('finish-checklist');
@@ -486,11 +490,15 @@
     if (intwQ6) intwQ6.value = intw.q6_ajout_remarques || '';
   }
 
+  function openInterviewHandoffScreen() {
+    const pid = sessionData.participant_id || selectedParticipant || 'PXX';
+    if (handoffParticipantCode) handoffParticipantCode.textContent = pid;
+    if (handoffParticipantCodeInline) handoffParticipantCodeInline.textContent = pid;
+    showScreen('interviewHandoff');
+  }
+
   function openInterviewGuideScreen() {
     populateInterviewFieldsFromSession(sessionData);
-    if (interviewNotesDetails) {
-      interviewNotesDetails.open = hasNonEmptyInterviewNotes(sessionData);
-    }
     if (interviewSaveStatus) interviewSaveStatus.textContent = '';
     if (checkInterviewDone) {
       checkInterviewDone.checked = Boolean(sessionData.interview_completed);
@@ -561,10 +569,12 @@
 
     if (sessionData.trials.length >= 3) {
       if (sessionData.final_ranking && sessionData.final_ranking.rank_1) {
-        if (sessionData.interview_completed || hasNonEmptyInterviewNotes(sessionData)) {
+        if (sessionData.interview_completed) {
           openLoadedFinishScreen(sessionData, false);
-        } else {
+        } else if (hasNonEmptyInterviewNotes(sessionData)) {
           openInterviewGuideScreen();
+        } else {
+          openInterviewHandoffScreen();
         }
       } else {
         goToRankingScreen();
@@ -586,10 +596,12 @@
     sessionData = Object.assign(createEmptySessionData(), loaded);
     sessionData.participant_id = selectedParticipant;
     applyLoadedCalibration(sessionData);
-    if (sessionData.interview_completed || hasNonEmptyInterviewNotes(sessionData)) {
+    if (sessionData.interview_completed) {
       openLoadedFinishScreen(sessionData, true);
-    } else {
+    } else if (hasNonEmptyInterviewNotes(sessionData)) {
       openInterviewGuideScreen();
+    } else {
+      openInterviewHandoffScreen();
     }
   }
 
@@ -1147,8 +1159,11 @@
       case 'ranking':
         headerStep.textContent = 'Classement des préférences';
         break;
+      case 'interviewHandoff':
+        headerStep.textContent = "Remise à l'intervieweur";
+        break;
       case 'interviewGuide':
-        headerStep.textContent = 'Entrevue post-expérience';
+        headerStep.textContent = 'Entrevue & Prise de notes';
         break;
       case 'finish':
         headerStep.textContent = 'Clôture & Téléchargement complet';
@@ -1490,7 +1505,14 @@
       });
     }
 
-    // 20b. Interview Notes Auto-sync & Explicit Save Button
+    // 20b. Handoff -> Interviewer Guide & Notes
+    if (btnStartInterviewGuide) {
+      btnStartInterviewGuide.addEventListener('click', () => {
+        openInterviewGuideScreen();
+      });
+    }
+
+    // 20c. Interview Notes Auto-sync & Explicit Save Button
     [intwQ1, intwQ2, intwQ3, intwQ4, intwQ5, intwQ6].forEach(el => {
       if (!el) return;
       el.addEventListener('input', () => {
@@ -1721,6 +1743,15 @@
     trialCounter.textContent = '0 mot sélectionné';
     if (trialTimer) {
       trialTimer.textContent = 'Temps : 00:00';
+    }
+    if (trialModeReminder) {
+      if (condCode === 'SIL') {
+        trialModeReminder.innerHTML = '<strong>Rappel — Lecture silencieuse :</strong> Lisez dans votre tête à votre rythme habituel. Cliquez sur chaque mot erroné (1 mot par erreur, recliquez pour annuler).';
+      } else if (condCode === 'HAUTE') {
+        trialModeReminder.innerHTML = '<strong>Rappel — Lecture à voix haute :</strong> Lisez à voix haute de façon claire et continue. Cliquez sur chaque mot erroné (recliquez pour annuler).';
+      } else {
+        trialModeReminder.innerHTML = '<strong>Rappel — Synthèse vocale (TTS) :</strong> Écoutez l\'audio au casque tout en suivant des yeux. Utilisez les contrôles ci-dessus pour ajuster la vitesse ou cliquez sur <strong>▶</strong> pour reprendre à une phrase.';
+      }
     }
 
     syncTrialSpeedSelect(currentTtsRate);
@@ -2024,7 +2055,7 @@
     }
 
     autoSaveSession({ downloadedOffline: false });
-    openInterviewGuideScreen();
+    openInterviewHandoffScreen();
   }
 
   function syncInterviewAnswersFromDom() {

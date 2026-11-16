@@ -27,8 +27,12 @@
       <!-- ======================================================== -->
       <section id="screen-setup" class="screen active">
         <div class="card">
+          <div class="step-header-row">
+            <div class="step-indicator">Préparation — Avant l'installation du participant</div>
+            <span class="role-badge experimenter">Expérimentateur</span>
+          </div>
           <h1>Configuration de la session (Expérimentateur)</h1>
-          <p class="subtitle">Sélectionnez le participant assigné selon le carré latin avant d'installer le participant.</p>
+          <p class="subtitle">Sélectionnez le numéro du participant selon le carré latin. L'ordre contrebalancé des 3 modalités et des 3 textes sera attribué automatiquement.</p>
           <hr>
 
           <div id="server-status-banner" class="info-box">Vérification de la connexion au serveur local...</div>
@@ -87,19 +91,25 @@
       <!-- ======================================================== -->
       <section id="screen-consent" class="screen">
         <div class="card">
-          <div class="step-indicator">Étape 1 : Formulaire de consentement (Acceptation)</div>
+          <div class="step-header-row">
+            <div class="step-indicator">Étape 1 : Formulaire de consentement (Acceptation)</div>
+            <span class="role-badge experimenter">Expérimentateur</span>
+          </div>
           <h1>Formulaire d'information et de consentement (FIC)</h1>
-          <p class="subtitle">Étape obligatoire avant de débuter la collecte — code attribué : <strong id="consent-participant-code">PXX</strong>.</p>
+          <p class="subtitle">Avant de céder l'écran au participant, complétez ces vérifications initiales — code attribué : <strong id="consent-participant-code">PXX</strong>.</p>
           <hr>
 
           <div class="instruction-box">
             <h3>À effectuer avec le participant avant de continuer :</h3>
             <ol class="guided-checklist">
               <li>
-                <strong>Formulaire d'acceptation / consentement :</strong> Faire lire et <strong>signer</strong> le formulaire d'information et de consentement (FIC) en inscrivant le code identifiant <code id="consent-participant-code-inline">PXX</code>.
+                <strong>Formulaire d'acceptation / consentement (papier ou PDF) :</strong> Faire lire et <strong>signer</strong> le FIC en y inscrivant le code identifiant <code id="consent-participant-code-inline">PXX</code>.
               </li>
               <li>
-                <strong>Préparation du matériel :</strong> Vérifier que le <strong>casque d'écoute</strong> et le <strong>dictaphone / enregistreur</strong> (pour la lecture à voix haute et l'entrevue finale) sont prêts.
+                <strong>Préparation du matériel :</strong> Vérifier que le <strong>casque d'écoute</strong> est branché et que le <strong>dictaphone / enregistreur</strong> (pour l'entrevue finale) est prêt.
+              </li>
+              <li>
+                <strong>Suite du parcours :</strong> Juste après cette validation, le questionnaire pré-condition puis la calibration audio se feront directement dans l'interface avec le participant.
               </li>
             </ol>
           </div>
@@ -125,9 +135,12 @@
       <!-- ======================================================== -->
       <section id="screen-precondition" class="screen">
         <div class="card">
-          <div class="step-indicator">Étape 2 : Questionnaire Pré-Condition</div>
+          <div class="step-header-row">
+            <div class="step-indicator">Étape 2 : Questionnaire Pré-Condition</div>
+            <span class="role-badge participant">Participant</span>
+          </div>
           <h1>Questionnaire Pré-Condition</h1>
-          <p class="subtitle">Ce court questionnaire recueille des renseignements de cadrage avant de débuter les tâches de relecture.</p>
+          <p class="subtitle">Veuillez répondre à ces 5 courtes questions générales (environ 1 minute) avant de régler le matériel audio et de débuter l'entraînement.</p>
           <hr>
 
           <form id="precondition-form">
@@ -204,7 +217,10 @@
       <!-- ======================================================== -->
       <section id="screen-audio-calibration" class="screen">
         <div class="card">
-          <div class="step-indicator">Étape 3 : Accueil & Réglage du matériel audio</div>
+          <div class="step-header-row">
+            <div class="step-indicator">Étape 3 : Accueil & Réglage du matériel audio</div>
+            <span class="role-badge participant">Participant</span>
+          </div>
           <h1>Réglage du volume sonore et de la vitesse de lecture</h1>
           <p class="subtitle">Bienvenue ! Veuillez mettre votre casque d'écoute audio sur vos oreilles.</p>
           
@@ -260,7 +276,7 @@
           </div>
 
           <div class="info-box">
-            <p><strong>Note importante :</strong> La vitesse et le volume réglés ici seront utilisés pour les blocs de lecture avec synthèse vocale. Pendant la lecture, vous pourrez mettre l'audio en pause ou le recommencer au besoin.</p>
+            <p><strong>Note importante :</strong> La vitesse et le volume choisis ici seront appliqués dès le début des blocs avec synthèse vocale (TTS). Pendant la lecture TTS, vous pourrez toujours ajuster la vitesse en direct, mettre l'audio en pause, recommencer du début ou reprendre à partir d'une phrase (icône <strong>▶</strong>).</p>
           </div>
 
           <hr>
@@ -276,9 +292,12 @@
       <!-- ======================================================== -->
       <section id="screen-practice-intro" class="screen">
         <div class="card">
-          <div class="step-indicator">Étape préliminaire : Entraînement</div>
+          <div class="step-header-row">
+            <div class="step-indicator">Étape préliminaire : Entraînement</div>
+            <span class="role-badge participant">Participant</span>
+          </div>
           <h1>Pratique de familiarisation</h1>
-          <p class="subtitle">Cette étape vous permet de tester le système sans stress avant les textes officiels.</p>
+          <p class="subtitle">Cette courte étape non notée vous permet de tester la détection d'erreurs au clic et le format du questionnaire avant les 3 textes officiels.</p>
 
           <div class="instruction-box">
             <h3>Consignes de la relecture :</h3>
@@ -306,7 +325,10 @@
       <!-- ======================================================== -->
       <section id="screen-practice" class="screen">
         <div class="card">
-          <div class="step-indicator">Étape préliminaire : Entraînement</div>
+          <div class="step-header-row">
+            <div class="step-indicator">Étape préliminaire : Entraînement</div>
+            <span class="role-badge participant">Participant</span>
+          </div>
           <h2 id="practice-title">Pratique — Familiarisation</h2>
           <div class="instruction-box">
             <p><strong>Rappel :</strong> Lisez le texte ci-dessous. Dès que vous voyez une erreur, <strong>cliquez sur le mot</strong> pour le marquer. Recliquez dessus pour annuler si besoin. Lorsque vous avez fini, cliquez sur <em>« Terminer l'entraînement »</em>.</p>
@@ -328,9 +350,12 @@
       <!-- ======================================================== -->
       <section id="screen-practice-quiz-intro" class="screen">
         <div class="card">
-          <div class="step-indicator">Entraînement — Test de rétention</div>
+          <div class="step-header-row">
+            <div class="step-indicator">Entraînement — Test de rétention</div>
+            <span class="role-badge participant">Participant</span>
+          </div>
           <h1>Questionnaire de compréhension (Entraînement)</h1>
-          <p class="subtitle">La lecture du texte de pratique est terminée.</p>
+          <p class="subtitle">La lecture du texte de pratique est terminée. Voici un aperçu du mini-questionnaire qui suit chaque texte.</p>
 
           <div class="instruction-box">
             <p class="large-text">Le texte d'entraînement a été masqué et n'est plus visible.</p>
@@ -349,7 +374,10 @@
       <!-- ======================================================== -->
       <section id="screen-practice-quiz" class="screen">
         <div class="card">
-          <div class="step-indicator">Entraînement — Test de rétention</div>
+          <div class="step-header-row">
+            <div class="step-indicator">Entraînement — Test de rétention</div>
+            <span class="role-badge participant">Participant</span>
+          </div>
           <h2>Questions de compréhension (Entraînement)</h2>
           <p class="help-text">Le texte est masqué. Répondez aux questions suivantes pour tester le fonctionnement du questionnaire :</p>
           <hr>
@@ -368,9 +396,12 @@
       <!-- ======================================================== -->
       <section id="screen-practice-finish" class="screen">
         <div class="card">
-          <div class="step-indicator">Entraînement complété</div>
+          <div class="step-header-row">
+            <div class="step-indicator">Entraînement complété</div>
+            <span class="role-badge participant">Participant</span>
+          </div>
           <h1>Entraînement terminé avec succès !</h1>
-          <p class="subtitle">Vous maîtrisez maintenant parfaitement l'outil de sélection au clic et le questionnaire.</p>
+          <p class="subtitle">Vous maîtrisez maintenant l'outil de sélection au clic et le questionnaire. Vous allez passer aux 3 blocs officiels.</p>
 
           <div class="info-box" id="practice-debrief-box">
             <p><strong>Bilan de votre pratique :</strong></p>
@@ -399,8 +430,12 @@
       <!-- ======================================================== -->
       <section id="screen-instruction" class="screen">
         <div class="card">
-          <div class="step-indicator" id="instruction-block-indicator">Bloc 1 sur 3 — Consignes</div>
+          <div class="step-header-row">
+            <div class="step-indicator" id="instruction-block-indicator">Bloc 1 sur 3 — Consignes</div>
+            <span class="role-badge participant">Participant</span>
+          </div>
           <h1 id="instruction-condition-title">Modalité</h1>
+          <p class="subtitle">Lisez attentivement la consigne ci-dessous : chaque bloc suit un déroulement identique (relecture → 3 questions de mémoire → courte évaluation).</p>
           
           <div class="instruction-box">
             <h3 id="instruction-heading">Consigne spécifique pour cette condition :</h3>
@@ -483,6 +518,8 @@
             </div>
           </div>
 
+          <div id="trial-mode-reminder" class="trial-mode-reminder"></div>
+
           <h2 id="trial-text-title" class="story-title">Titre de l'histoire</h2>
 
           <!-- Main Clickable Text Area -->
@@ -502,9 +539,12 @@
       <!-- ======================================================== -->
       <section id="screen-trial-quiz-intro" class="screen">
         <div class="card">
-          <div class="step-indicator" id="trial-quiz-intro-indicator">Bloc 1 sur 3 — Relecture terminée</div>
+          <div class="step-header-row">
+            <div class="step-indicator" id="trial-quiz-intro-indicator">Bloc 1 sur 3 — Relecture terminée</div>
+            <span class="role-badge participant">Participant</span>
+          </div>
           <h1>Questionnaire de rétention de l'information</h1>
-          <p class="subtitle">Vous avez terminé la relecture de ce texte avec succès.</p>
+          <p class="subtitle">Vous avez terminé la relecture de ce texte. Passez maintenant aux 3 questions de compréhension de mémoire.</p>
 
           <div class="instruction-box">
             <p class="large-text">Le texte a été masqué et ne sera plus visible.</p>
@@ -523,7 +563,10 @@
       <!-- ======================================================== -->
       <section id="screen-quiz" class="screen">
         <div class="card">
-          <div class="step-indicator" id="quiz-block-indicator">Bloc 1 sur 3 — Quiz de rétention</div>
+          <div class="step-header-row">
+            <div class="step-indicator" id="quiz-block-indicator">Bloc 1 sur 3 — Quiz de rétention</div>
+            <span class="role-badge participant">Participant</span>
+          </div>
           <h2>Questionnaire de rétention de l'information</h2>
           <p class="help-text">Le texte est masqué. Sans consulter le texte, répondez aux 3 questions factuelles suivantes :</p>
           <hr>
@@ -542,9 +585,12 @@
       <!-- ======================================================== -->
       <section id="screen-rating-intro" class="screen">
         <div class="card">
-          <div class="step-indicator" id="rating-intro-indicator">Bloc 1 sur 3 — Évaluation subjective</div>
+          <div class="step-header-row">
+            <div class="step-indicator" id="rating-intro-indicator">Bloc 1 sur 3 — Évaluation subjective</div>
+            <span class="role-badge participant">Participant</span>
+          </div>
           <h1 id="rating-intro-title">Vos impressions sur la modalité</h1>
-          <p class="subtitle">Le questionnaire de compréhension a été enregistré.</p>
+          <p class="subtitle">Vos réponses de compréhension sont enregistrées. Il reste 2 rapides échelles d'impression sur cette modalité de lecture.</p>
 
           <div class="instruction-box">
             <p class="large-text">Nous souhaitons maintenant recueillir vos impressions subjectives sur la modalité de lecture que vous venez d'utiliser.</p>
@@ -567,7 +613,10 @@
       <!-- ======================================================== -->
       <section id="screen-rating" class="screen">
         <div class="card">
-          <div class="step-indicator" id="rating-block-indicator">Bloc 1 sur 3 — Évaluation subjective</div>
+          <div class="step-header-row">
+            <div class="step-indicator" id="rating-block-indicator">Bloc 1 sur 3 — Évaluation subjective</div>
+            <span class="role-badge participant">Participant</span>
+          </div>
           <h2 id="rating-condition-title">Évaluation de la modalité</h2>
           <p class="help-text">Veuillez indiquer vos impressions pour la modalité que vous venez d'expérimenter :</p>
           <hr>
@@ -619,9 +668,12 @@
       <!-- ======================================================== -->
       <section id="screen-interblock" class="screen">
         <div class="card">
-          <div class="step-indicator" id="interblock-step-indicator">Pause entre les blocs</div>
+          <div class="step-header-row">
+            <div class="step-indicator" id="interblock-step-indicator">Pause entre les blocs</div>
+            <span class="role-badge participant">Participant</span>
+          </div>
           <h1 id="interblock-title">Bloc 1 sur 3 complété !</h1>
-          <p class="subtitle">Excellent travail, les données de ce bloc ont été enregistrées avec succès.</p>
+          <p class="subtitle">Excellent travail ! Les données de ce bloc sont enregistrées. Le prochain bloc portera sur une autre modalité et un nouveau texte.</p>
 
           <div class="instruction-box">
             <p class="large-text">Prenez une courte pause de quelques instants pour reposer vos yeux et votre attention.</p>
@@ -640,9 +692,12 @@
       <!-- ======================================================== -->
       <section id="screen-ranking" class="screen">
         <div class="card">
-          <div class="step-indicator">Fin de l'expérience — Évaluation globale</div>
+          <div class="step-header-row">
+            <div class="step-indicator">Fin des 3 blocs — Évaluation globale</div>
+            <span class="role-badge participant">Participant</span>
+          </div>
           <h1>Classement général de vos préférences</h1>
-          <p class="subtitle">Vous venez d'expérimenter les trois modalités de relecture. Veuillez maintenant indiquer votre ordre de préférence globale :</p>
+          <p class="subtitle">Vous avez testé les trois modalités. Indiquez maintenant votre préférence globale de la 1ère à la 3e place (dernière étape avant la remise à l'intervieweur).</p>
           <hr>
 
           <form id="ranking-form">
@@ -693,90 +748,103 @@
       </section>
 
       <!-- ======================================================== -->
-      <!-- 16. GUIDED INTERVIEW STEP (BEFORE FINAL RESULTS/EXPORT)  -->
+      <!-- 16A. PARTICIPANT -> INTERVIEWER HANDOFF SCREEN           -->
+      <!-- ======================================================== -->
+      <section id="screen-interview-handoff" class="screen">
+        <div class="card">
+          <div class="step-header-row">
+            <div class="step-indicator">Fin des tâches à l'écran — Transition</div>
+            <span class="role-badge handoff">Remise à l'intervieweur</span>
+          </div>
+          <h1>Merci ! Veuillez maintenant remettre l'interface à l'intervieweur</h1>
+          <p class="subtitle">La partie à l'ordinateur est terminée pour le participant (<strong id="handoff-participant-code">PXX</strong>).</p>
+
+          <div class="handoff-box">
+            <p style="margin-top: 0;"><strong>Pour le participant :</strong> Toutes vos réponses (les 3 blocs et votre classement général) sont bien enregistrées. Vous pouvez retirer votre casque et <strong>rendre le clavier / la souris à l'intervieweur</strong> pour la courte discussion finale (~5 min).</p>
+            <p style="margin-bottom: 0;"><strong>Pour l'intervieweur :</strong> Reprenez l'ordinateur, préparez l'enregistreur / dictaphone avec le code <code id="handoff-participant-code-inline">PXX</code> si utilisé, puis cliquez sur <strong>Suivant</strong> ci-dessous pour afficher les questions d'entrevue et les zones de prise de notes.</p>
+          </div>
+
+          <hr>
+
+          <div class="action-row">
+            <button type="button" id="btn-start-interview-guide" class="btn btn-primary btn-lg">Suivant — Ouvrir le guide et les notes d'entrevue (Intervieweur)</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- 16B. INTERVIEWER GUIDE & DIRECT NOTES CAPTURE            -->
       <!-- ======================================================== -->
       <section id="screen-interview-guide" class="screen">
         <div class="card">
-          <div class="step-indicator">Étape finale : Entrevue post-expérience (~5 min)</div>
-          <h1>Entrevue orale avec le participant (<span id="interview-participant-code">PXX</span>)</h1>
-          <p class="subtitle">La partie à l'ordinateur est terminée. Réalisez maintenant l'entrevue avec votre document guide avant d'afficher les résultats et de clôturer le test.</p>
+          <div class="step-header-row">
+            <div class="step-indicator">Étape finale : Entrevue semi-dirigée (~5 min)</div>
+            <span class="role-badge experimenter">Intervieweur</span>
+          </div>
+          <h1>Questions d'entrevue et prise de notes (<span id="interview-participant-code">PXX</span>)</h1>
+          <p class="subtitle">Posez ces questions librement à l'oral et notez directement les réponses dans les cases ci-dessous. Toutes les notes sont sauvegardées automatiquement et incluses dans le fichier final.</p>
 
           <div class="instruction-box">
-            <h3>À faire avant de cliquer sur Suivant :</h3>
+            <h3>Déroulement suggéré :</h3>
             <ol class="guided-checklist">
-              <li><strong>Démarrer le dictaphone / enregistreur</strong> (en mentionnant le code participant <code id="interview-participant-code-inline">PXX</code>).</li>
-              <li><strong>Mener l'entrevue semi-dirigée</strong> à l'aide de votre document guide (<code>interview.md</code> / <code>Guide_Entrevue.pdf</code>). Rappel des 6 questions :
-                <ul style="padding-left: 18px; margin-top: 6px; font-size: 14px; line-height: 1.6;">
-                  <li><strong>Q1 :</strong> Habitudes générales de révision de textes (méthodes, routines).</li>
-                  <li><strong>Q2 :</strong> Usage passé d'outils de synthèse vocale (text-to-speech).</li>
-                  <li><strong>Q3 :</strong> Avantages et inconvénients perçus pour chacune des trois modalités.</li>
-                  <li><strong>Q4 :</strong> Une modalité s'est-elle démarquée positivement ou négativement, et pourquoi ?</li>
-                  <li><strong>Q5 :</strong> Certains textes ont-ils paru plus simples ou plus complexes que d'autres ?</li>
-                  <li><strong>Q6 :</strong> Remarques libres ou précisions supplémentaires sur l'expérience.</li>
-                </ul>
-              </li>
+              <li><strong>Audio (optionnel / recommandé) :</strong> Démarrez le dictaphone en énonçant le code participant <code id="interview-participant-code-inline">PXX</code>.</li>
+              <li><strong>Entrevue libre :</strong> Posez les questions ci-dessous dans l'ordre ou selon le fil de la discussion, en utilisant les relances si utile, et tapez les points clés dans chaque case.</li>
+              <li><strong>Clôture :</strong> Une fois l'entrevue terminée, cochez la confirmation en bas de page et cliquez sur <em>« Terminer et sauvegarder tout le test »</em>.</li>
             </ol>
           </div>
 
-          <!-- Optional notes box (collapsed by default; keeps scores hidden to avoid interview bias) -->
-          <details id="interview-notes-details" class="experimenter-panel" style="margin-top: 16px;">
-            <summary class="experimenter-panel-summary">
-              Optionnel — Saisir des notes d'entrevue dans l'application (incluses dans le JSON/CSV)
-            </summary>
+          <div class="interview-card" style="margin-top: 16px;">
+            <label for="intw-q1"><strong>Q1. Habitudes de révision :</strong> « Comment avez-vous l'habitude de réviser vos textes ? Quelles méthodes ou routines utilisez-vous habituellement ? »</label>
+            <p class="interview-q-subprompt">Relances : lecture dans votre tête, à voix haute, sur papier, plusieurs passes, correcteurs ? Qu'est-ce qui fonctionne bien ou moins bien ?</p>
+            <textarea id="intw-q1" class="form-control" rows="3" placeholder="Notes de l'intervieweur pour Q1..."></textarea>
+          </div>
 
-            <div class="experimenter-panel-body">
-              <p class="help-text" style="margin-top: 0;">
-                Si vous notez directement sur votre document papier ou votre dictaphone, laissez cette section fermée et cochez simplement la confirmation ci-dessous.
-              </p>
+          <div class="interview-card">
+            <label for="intw-q2"><strong>Q2. Usage passé du TTS :</strong> « Aviez-vous déjà utilisé des outils de synthèse vocale (text-to-speech) auparavant ? »</label>
+            <p class="interview-q-subprompt">Relances : pour réviser, lire des PDF/articles, écoute de livres audio, fréquence d'usage et confort initial.</p>
+            <textarea id="intw-q2" class="form-control" rows="3" placeholder="Notes de l'intervieweur pour Q2..."></textarea>
+          </div>
 
-              <div class="interview-card">
-                <label for="intw-q1"><strong>1. Habitudes de révision :</strong> Comment avez-vous l'habitude de réviser vos textes ? Quelles méthodes ou routines ?</label>
-                <textarea id="intw-q1" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
-              </div>
+          <div class="interview-card">
+            <label for="intw-q3"><strong>Q3. Avantages et inconvénients des 3 modalités :</strong> « Quels avantages et inconvénients voyez-vous pour chacune des trois méthodes (silencieuse, à voix haute, synthèse vocale) ? »</label>
+            <p class="interview-q-subprompt">Relances : vitesse/contrôle, fatigue vocale ou auditive, confiance d'avoir repéré les erreurs, compréhension du sens du texte.</p>
+            <textarea id="intw-q3" class="form-control" rows="3" placeholder="Notes de l'intervieweur pour Q3 (SIL / HAUTE / TTS)..."></textarea>
+          </div>
 
-              <div class="interview-card">
-                <label for="intw-q2"><strong>2. Usage passé du TTS :</strong> Aviez-vous déjà utilisé des outils de synthèse vocale (text-to-speech) ?</label>
-                <textarea id="intw-q2" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
-              </div>
+          <div class="interview-card">
+            <label for="intw-q4"><strong>Q4. Modalité qui s'est démarquée :</strong> « Y a-t-il une modalité qui s'est démarquée positivement ou négativement pour vous, et pourquoi ? »</label>
+            <p class="interview-q-subprompt">Relances : qu'est-ce qui a motivé votre classement 1re vs 3e place ? Adopteriez-vous le TTS en pratique ?</p>
+            <textarea id="intw-q4" class="form-control" rows="3" placeholder="Notes de l'intervieweur pour Q4..."></textarea>
+          </div>
 
-              <div class="interview-card">
-                <label for="intw-q3"><strong>3. Avantages et inconvénients :</strong> Quels avantages et inconvénients voyez-vous pour chacune des trois méthodes ?</label>
-                <textarea id="intw-q3" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
-              </div>
+          <div class="interview-card">
+            <label for="intw-q5"><strong>Q5. Complexité des textes :</strong> « Parmi les textes proposés, certains vous ont-ils paru plus simples ou plus complexes à réviser ou retenir ? »</label>
+            <p class="interview-q-subprompt">Relances : sujet, vocabulaire, fluidité de la voix, fatigue en fin de session.</p>
+            <textarea id="intw-q5" class="form-control" rows="3" placeholder="Notes de l'intervieweur pour Q5..."></textarea>
+          </div>
 
-              <div class="interview-card">
-                <label for="intw-q4"><strong>4. Modalité démarquée :</strong> Y en a-t-il une qui s'est démarquée positivement ou négativement, et pourquoi ?</label>
-                <textarea id="intw-q4" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
-              </div>
+          <div class="interview-card">
+            <label for="intw-q6"><strong>Q6. Remarques libres :</strong> « Avez-vous autre chose à ajouter ou à préciser sur l'expérience ou sur l'interface ? »</label>
+            <p class="interview-q-subprompt">Relances : réglage de la vitesse, bouton pause/reprise par phrase (▶), ergonomie générale.</p>
+            <textarea id="intw-q6" class="form-control" rows="3" placeholder="Notes de l'intervieweur pour Q6..."></textarea>
+          </div>
 
-              <div class="interview-card">
-                <label for="intw-q5"><strong>5. Complexité des textes :</strong> Parmi les textes proposés, certains vous ont-ils paru plus simples ou plus complexes ?</label>
-                <textarea id="intw-q5" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
-              </div>
-
-              <div class="interview-card">
-                <label for="intw-q6"><strong>6. Remarques libres :</strong> Quelque chose à ajouter ou à préciser sur votre expérience ?</label>
-                <textarea id="intw-q6" class="form-control" rows="2" placeholder="Notes de l'expérimentateur..."></textarea>
-              </div>
-
-              <div class="action-row" style="margin-top: 10px;">
-                <button type="button" id="btn-save-interview" class="btn btn-secondary">Enregistrer les notes intermédiaires</button>
-                <span id="interview-save-status" class="status-msg"></span>
-              </div>
-            </div>
-          </details>
+          <div class="action-row" style="margin-top: 12px;">
+            <button type="button" id="btn-save-interview" class="btn btn-secondary">Sauvegarder les notes maintenant</button>
+            <span id="interview-save-status" class="status-msg"></span>
+          </div>
 
           <div class="warning-box" style="margin-top: 18px;">
             <label class="checkbox-confirm-label">
               <input type="checkbox" id="check-interview-done">
-              <span><strong>Confirmation expérimentateur :</strong> L'entrevue finale a bien été menée avec le participant (<span id="interview-participant-code-confirm">PXX</span>) et le dictaphone a été arrêté/sauvegardé.</span>
+              <span><strong>Confirmation intervieweur :</strong> L'entrevue finale a bien été réalisée avec le participant (<span id="interview-participant-code-confirm">PXX</span>) et l'enregistrement audio (le cas échéant) a été arrêté et sauvegardé.</span>
             </label>
           </div>
 
           <hr>
 
           <div class="action-row">
-            <button type="button" id="btn-finish-interview" class="btn btn-primary btn-lg" disabled>Suivant — Terminer l'expérience et télécharger toutes les données</button>
+            <button type="button" id="btn-finish-interview" class="btn btn-primary btn-lg" disabled>Suivant — Terminer l'expérience et sauvegarder tout le test</button>
           </div>
         </div>
       </section>
@@ -786,9 +854,12 @@
       <!-- ======================================================== -->
       <section id="screen-finish" class="screen">
         <div class="card">
-          <div class="step-indicator">Clôture — Toutes les étapes complétées</div>
-          <h1>Merci beaucoup pour votre participation !</h1>
-          <p class="subtitle">L'ensemble du protocole est complété. Vérifiez ci-dessous que les données complètes du test sont bien enregistrées avant de passer au participant suivant.</p>
+          <div class="step-header-row">
+            <div class="step-indicator">Clôture — Toutes les étapes complétées</div>
+            <span class="role-badge experimenter">Expérimentateur</span>
+          </div>
+          <h1>Session complétée — Données prêtes à enregistrer !</h1>
+          <p class="subtitle">L'ensemble du protocole (3 blocs, classement et entrevue) est terminé. Vérifiez ci-dessous que le téléchargement complet (JSON et CSV) a bien réussi avant de passer au participant suivant.</p>
 
           <div id="finish-checklist" class="completion-checklist"></div>
 
