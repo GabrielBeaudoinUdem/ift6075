@@ -52,6 +52,12 @@
   let sentenceBtnByIndex = [];
   let interviewAutoSaveTimer = null;
 
+  // Electronic FIC consent state (stored separately from coded sessionData)
+  const CONSENT_STORAGE_PREFIX = 'IFT6075_CONSENT_';
+  let currentConsentRecord = null;
+  let participantSigPad = null;
+  let researcherSigPad = null;
+
   // Session Results
   function createEmptySessionData() {
     return {
@@ -60,6 +66,9 @@
       end_time: null,
       consent_confirmed: false,
       consent_confirmed_at: null,
+      consent_open_science: null,
+      consent_audio_recording: null,
+      consent_summary_requested: null,
       environment: {
         user_agent: navigator.userAgent || '',
         platform: navigator.platform || ''
@@ -118,15 +127,32 @@
   const btnOpenFinish = document.getElementById('btn-open-finish');
   const btnSetupDownloadJson = document.getElementById('btn-setup-download-json');
   const btnSetupDownloadCsv = document.getElementById('btn-setup-download-csv');
+  const btnSetupDownloadFic = document.getElementById('btn-setup-download-fic');
   const btnClearExistingSession = document.getElementById('btn-clear-existing-session');
   const checkPractice = document.getElementById('check-practice');
   const btnStartExperiment = document.getElementById('btn-start-experiment');
 
-  // Consent elements
+  // Consent elements (Electronic FIC)
   const consentParticipantCode = document.getElementById('consent-participant-code');
   const consentParticipantCodeInline = document.getElementById('consent-participant-code-inline');
   const consentParticipantCodeConfirm = document.getElementById('consent-participant-code-confirm');
-  const checkConsentSigned = document.getElementById('check-consent-signed');
+  const consentForm = document.getElementById('consent-form');
+  const ficAcceptParticipate = document.getElementById('fic-accept-participate');
+  const ficEmailRow = document.getElementById('fic-email-row');
+  const ficParticipantEmail = document.getElementById('fic-participant-email');
+  const ficParticipantFirstname = document.getElementById('fic-participant-firstname');
+  const ficParticipantLastname = document.getElementById('fic-participant-lastname');
+  const ficParticipantDate = document.getElementById('fic-participant-date');
+  const ficParticipantSigCanvas = document.getElementById('fic-participant-sig-canvas');
+  const ficParticipantSigWrap = document.getElementById('fic-participant-sig-wrap');
+  const btnClearParticipantSig = document.getElementById('btn-clear-participant-sig');
+  const ficResearcherFirstname = document.getElementById('fic-researcher-firstname');
+  const ficResearcherLastname = document.getElementById('fic-researcher-lastname');
+  const ficResearcherDate = document.getElementById('fic-researcher-date');
+  const ficResearcherSigCanvas = document.getElementById('fic-researcher-sig-canvas');
+  const ficResearcherSigWrap = document.getElementById('fic-researcher-sig-wrap');
+  const btnClearResearcherSig = document.getElementById('btn-clear-researcher-sig');
+  const ficValidationStatus = document.getElementById('fic-validation-status');
   const btnConsentBack = document.getElementById('btn-consent-back');
   const btnConsentNext = document.getElementById('btn-consent-next');
 
@@ -226,8 +252,12 @@
   const summaryTableBody = document.getElementById('summary-table-body');
   const btnDownloadJson = document.getElementById('btn-download-json');
   const btnDownloadCsv = document.getElementById('btn-download-csv');
+  const ficExportStatusPill = document.getElementById('fic-export-status-pill');
+  const btnDownloadFic = document.getElementById('btn-download-fic');
+  const btnPrintFic = document.getElementById('btn-print-fic');
   const btnDownloadAllJson = document.getElementById('btn-download-all-json');
   const btnDownloadAllCsv = document.getElementById('btn-download-all-csv');
+  const btnDownloadAllFic = document.getElementById('btn-download-all-fic');
   const btnBackToInterview = document.getElementById('btn-back-to-interview');
   const btnResetSession = document.getElementById('btn-reset-session');
 
@@ -345,6 +375,59 @@
     }
   }
 
+  function getLocalConsent(pid) {
+    if (!pid) return null;
+    try {
+      const raw = localStorage.getItem(`${CONSENT_STORAGE_PREFIX}${pid}`);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function saveLocalConsent(pid, record) {
+    if (!pid || !record) return;
+    try {
+      localStorage.setItem(`${CONSENT_STORAGE_PREFIX}${pid}`, JSON.stringify(record));
+    } catch (err) {
+      console.warn('Impossible de sauvegarder le FIC dans localStorage:', err);
+    }
+  }
+
+  async function fetchConsentForParticipant(pid) {
+    if (!pid) return null;
+    if (isServerConnected) {
+      try {
+        const res = await fetch(`/api/consent/${encodeURIComponent(pid)}`, { cache: 'no-store' });
+        if (res.ok) {
+          const payload = await res.json();
+          if (payload && payload.consent) return payload.consent;
+        }
+      } catch (_) {}
+    }
+    return getLocalConsent(pid);
+  }
+
+  function getAllBrowserConsentsList() {
+    const map = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      const match = key && /^IFT6075_CONSENT_(P\d+)$/.exec(key);
+      if (!match) continue;
+      const pid = match[1];
+      const rec = getLocalConsent(pid);
+      if (rec && rec.participant_id) {
+        map[pid] = rec;
+      }
+    }
+    if (currentConsentRecord && currentConsentRecord.participant_id) {
+      map[currentConsentRecord.participant_id] = currentConsentRecord;
+    }
+    return Object.keys(map)
+      .sort()
+      .map(pid => map[pid]);
+  }
+
   function hasNonEmptyInterviewNotes(session) {
     const intw = (session && session.interview_answers) || {};
     return Object.values(intw).some(v => String(v || '').trim().length > 0);
@@ -358,6 +441,7 @@
         trialsCount: srv.trials_count || 0,
         completed: Boolean(srv.completed),
         hasConsent: Boolean(srv.has_consent),
+        hasConsentFile: Boolean(srv.has_consent_file) || Boolean(getLocalConsent(pid)),
         hasRanking: Boolean(srv.has_ranking),
         interviewCompleted: Boolean(srv.interview_completed),
         hasPrecondition: true,
@@ -377,6 +461,7 @@
         trialsCount: completedTrials.length,
         completed: completedTrials.length >= 3 && hasRanking,
         hasConsent: Boolean(local.consent_confirmed),
+        hasConsentFile: Boolean(getLocalConsent(pid)),
         hasRanking,
         interviewCompleted,
         hasPrecondition: Boolean(local.precondition),
@@ -453,6 +538,7 @@
       if (btnOpenFinish) btnOpenFinish.classList.add('hidden');
       if (btnSetupDownloadJson) btnSetupDownloadJson.classList.add('hidden');
       if (btnSetupDownloadCsv) btnSetupDownloadCsv.classList.add('hidden');
+      if (btnSetupDownloadFic) btnSetupDownloadFic.classList.add('hidden');
       if (btnClearExistingSession) btnClearExistingSession.classList.add('hidden');
       if (btnStartExperiment) {
         btnStartExperiment.textContent = 'Suivant — Étape 1 : Consentement (FIC)';
@@ -468,6 +554,10 @@
     if (btnSetupDownloadCsv) {
       btnSetupDownloadCsv.textContent = `Télécharger CSV (${pid})`;
       btnSetupDownloadCsv.classList.toggle('hidden', summary.trialsCount <= 0);
+    }
+    if (btnSetupDownloadFic) {
+      btnSetupDownloadFic.textContent = `Télécharger FIC signé (${pid})`;
+      btnSetupDownloadFic.classList.toggle('hidden', !summary.hasConsentFile);
     }
     if (btnClearExistingSession) {
       btnClearExistingSession.textContent = `Effacer et remettre ${pid} à zéro`;
@@ -523,16 +613,576 @@
     updateTtsVolume(vol);
   }
 
-  function openConsentScreen() {
+  function getTodayIsoLocal() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function createSignaturePad(canvas, wrapper, clearBtn, onChange) {
+    if (!canvas) {
+      return {
+        clear() {},
+        isEmpty() { return true; },
+        toDataURL() { return ''; },
+        loadDataURL() {}
+      };
+    }
+
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+    let signed = false;
+    let lastPoint = null;
+
+    function syncWrapperState() {
+      if (wrapper) {
+        wrapper.classList.toggle('signed', signed);
+      }
+      if (typeof onChange === 'function') {
+        onChange();
+      }
+    }
+
+    function getCanvasPoint(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
+      const scaleY = rect.height > 0 ? canvas.height / rect.height : 1;
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    }
+
+    function configureStroke() {
+      ctx.strokeStyle = '#111827';
+      ctx.fillStyle = '#111827';
+      ctx.lineWidth = 2.6;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch (_) {}
+      drawing = true;
+      lastPoint = getCanvasPoint(e);
+      configureStroke();
+      ctx.beginPath();
+      ctx.arc(lastPoint.x, lastPoint.y, ctx.lineWidth / 2, 0, Math.PI * 2);
+      ctx.fill();
+      if (!signed) {
+        signed = true;
+        syncWrapperState();
+      }
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      if (!drawing) return;
+      e.preventDefault();
+      const pt = getCanvasPoint(e);
+      configureStroke();
+      ctx.beginPath();
+      ctx.moveTo(lastPoint.x, lastPoint.y);
+      ctx.lineTo(pt.x, pt.y);
+      ctx.stroke();
+      lastPoint = pt;
+      if (!signed) {
+        signed = true;
+        syncWrapperState();
+      }
+    });
+
+    function endStroke(e) {
+      if (!drawing) return;
+      drawing = false;
+      lastPoint = null;
+      try {
+        if (e && e.pointerId !== undefined && canvas.hasPointerCapture(e.pointerId)) {
+          canvas.releasePointerCapture(e.pointerId);
+        }
+      } catch (_) {}
+    }
+
+    canvas.addEventListener('pointerup', endStroke);
+    canvas.addEventListener('pointercancel', endStroke);
+
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        signed = false;
+        syncWrapperState();
+      });
+    }
+
+    return {
+      clear() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        signed = false;
+        syncWrapperState();
+      },
+      isEmpty() {
+        return !signed;
+      },
+      toDataURL() {
+        return signed ? canvas.toDataURL('image/png') : '';
+      },
+      loadDataURL(dataUrl) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) {
+          signed = false;
+          syncWrapperState();
+          return;
+        }
+        const img = new Image();
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          signed = true;
+          syncWrapperState();
+        };
+        img.src = dataUrl;
+      }
+    };
+  }
+
+  function initSignaturePads() {
+    if (!participantSigPad) {
+      participantSigPad = createSignaturePad(
+        ficParticipantSigCanvas,
+        ficParticipantSigWrap,
+        btnClearParticipantSig,
+        updateConsentValidationBanner
+      );
+    }
+    if (!researcherSigPad) {
+      researcherSigPad = createSignaturePad(
+        ficResearcherSigCanvas,
+        ficResearcherSigWrap,
+        btnClearResearcherSig,
+        updateConsentValidationBanner
+      );
+    }
+  }
+
+  function getCheckedRadioValue(formEl, name) {
+    if (!formEl) return '';
+    const el = formEl.querySelector(`input[name="${name}"]:checked`);
+    return el ? el.value : '';
+  }
+
+  function setCheckedRadioValue(formEl, name, value) {
+    if (!formEl) return;
+    formEl.querySelectorAll(`input[name="${name}"]`).forEach(radio => {
+      radio.checked = radio.value === value;
+    });
+  }
+
+  function toggleConsentEmailRow() {
+    if (!consentForm || !ficEmailRow || !ficParticipantEmail) return;
+    const summaryChoice = getCheckedRadioValue(consentForm, 'fic-summary-email');
+    const wantsSummary = summaryChoice === 'oui';
+    ficEmailRow.classList.toggle('hidden', !wantsSummary);
+    ficParticipantEmail.required = wantsSummary;
+    if (!wantsSummary) {
+      ficParticipantEmail.value = '';
+    }
+  }
+
+  function getMissingConsentFields() {
+    const missing = [];
+    if (!ficAcceptParticipate || !ficAcceptParticipate.checked) {
+      missing.push({ label: 'acceptation de participer', target: ficAcceptParticipate });
+    }
+    const openScience = getCheckedRadioValue(consentForm, 'fic-open-science');
+    if (!openScience) {
+      missing.push({
+        label: 'réponse 1 (données anonymisées)',
+        target: consentForm ? consentForm.querySelector('input[name="fic-open-science"]') : null
+      });
+    }
+    const audioRec = getCheckedRadioValue(consentForm, 'fic-audio-recording');
+    if (!audioRec) {
+      missing.push({
+        label: 'réponse 2 (audio & captures)',
+        target: consentForm ? consentForm.querySelector('input[name="fic-audio-recording"]') : null
+      });
+    }
+    const summaryChoice = getCheckedRadioValue(consentForm, 'fic-summary-email');
+    if (!summaryChoice) {
+      missing.push({
+        label: 'réponse 3 (résumé des résultats)',
+        target: consentForm ? consentForm.querySelector('input[name="fic-summary-email"]') : null
+      });
+    } else if (summaryChoice === 'oui') {
+      const emailVal = (ficParticipantEmail && ficParticipantEmail.value || '').trim();
+      if (!emailVal || !ficParticipantEmail.checkValidity()) {
+        missing.push({ label: 'courriel valide pour le résumé', target: ficParticipantEmail });
+      }
+    }
+
+    if (!ficParticipantFirstname || !ficParticipantFirstname.value.trim()) {
+      missing.push({ label: 'prénom du participant', target: ficParticipantFirstname });
+    }
+    if (!ficParticipantLastname || !ficParticipantLastname.value.trim()) {
+      missing.push({ label: 'nom du participant', target: ficParticipantLastname });
+    }
+    if (!ficParticipantDate || !ficParticipantDate.value) {
+      missing.push({ label: 'date du participant', target: ficParticipantDate });
+    }
+    if (!participantSigPad || participantSigPad.isEmpty()) {
+      missing.push({ label: 'signature du participant', target: ficParticipantSigCanvas });
+    }
+
+    if (!ficResearcherFirstname || !ficResearcherFirstname.value.trim()) {
+      missing.push({ label: 'prénom du chercheur', target: ficResearcherFirstname });
+    }
+    if (!ficResearcherLastname || !ficResearcherLastname.value.trim()) {
+      missing.push({ label: 'nom du chercheur', target: ficResearcherLastname });
+    }
+    if (!ficResearcherDate || !ficResearcherDate.value) {
+      missing.push({ label: 'date du chercheur', target: ficResearcherDate });
+    }
+    if (!researcherSigPad || researcherSigPad.isEmpty()) {
+      missing.push({ label: 'signature du chercheur', target: ficResearcherSigCanvas });
+    }
+    return missing;
+  }
+
+  function updateConsentValidationBanner() {
+    if (!ficValidationStatus) return;
+    const missing = getMissingConsentFields();
+    if (missing.length === 0) {
+      ficValidationStatus.className = 'fic-validation-status ready';
+      ficValidationStatus.innerHTML =
+        '<strong>✓ Formulaire complet et signé :</strong> vous pouvez valider pour passer au questionnaire initial.';
+    } else {
+      ficValidationStatus.className = 'fic-validation-status';
+      ficValidationStatus.innerHTML =
+        `<strong>À compléter avant de continuer (${missing.length}) :</strong> ${escapeHtml(missing.map(m => m.label).join(', '))}.`;
+    }
+  }
+
+  function resetConsentForm() {
+    initSignaturePads();
+    if (consentForm) consentForm.reset();
+    const today = getTodayIsoLocal();
+    if (ficParticipantDate) ficParticipantDate.value = today;
+    if (ficResearcherDate) ficResearcherDate.value = today;
+    toggleConsentEmailRow();
+    if (participantSigPad) participantSigPad.clear();
+    if (researcherSigPad) researcherSigPad.clear();
+    updateConsentValidationBanner();
+  }
+
+  function loadConsentRecordIntoForm(rec) {
+    initSignaturePads();
+    resetConsentForm();
+    if (!rec) return;
+    if (ficAcceptParticipate) ficAcceptParticipate.checked = Boolean(rec.accepted_participate);
+    setCheckedRadioValue(consentForm, 'fic-open-science', rec.open_science || '');
+    setCheckedRadioValue(consentForm, 'fic-audio-recording', rec.audio_recording || '');
+    setCheckedRadioValue(consentForm, 'fic-summary-email', rec.summary_requested || '');
+    toggleConsentEmailRow();
+    if (ficParticipantEmail) ficParticipantEmail.value = rec.summary_email || '';
+    if (ficParticipantFirstname) ficParticipantFirstname.value = rec.participant_firstname || '';
+    if (ficParticipantLastname) ficParticipantLastname.value = rec.participant_lastname || '';
+    if (ficParticipantDate && rec.participant_date) ficParticipantDate.value = rec.participant_date;
+    if (ficResearcherFirstname) ficResearcherFirstname.value = rec.researcher_firstname || '';
+    if (ficResearcherLastname) ficResearcherLastname.value = rec.researcher_lastname || '';
+    if (ficResearcherDate && rec.researcher_date) ficResearcherDate.value = rec.researcher_date;
+    if (participantSigPad && rec.participant_signature_png) {
+      participantSigPad.loadDataURL(rec.participant_signature_png);
+    }
+    if (researcherSigPad && rec.researcher_signature_png) {
+      researcherSigPad.loadDataURL(rec.researcher_signature_png);
+    }
+    updateConsentValidationBanner();
+  }
+
+  function buildConsentRecordFromForm(pid) {
+    const summaryReq = getCheckedRadioValue(consentForm, 'fic-summary-email');
+    return {
+      participant_id: pid,
+      cerses_project: '2026-9119',
+      accepted_participate: Boolean(ficAcceptParticipate && ficAcceptParticipate.checked),
+      open_science: getCheckedRadioValue(consentForm, 'fic-open-science'),
+      audio_recording: getCheckedRadioValue(consentForm, 'fic-audio-recording'),
+      summary_requested: summaryReq,
+      summary_email: summaryReq === 'oui' && ficParticipantEmail ? ficParticipantEmail.value.trim() : '',
+      participant_firstname: ficParticipantFirstname ? ficParticipantFirstname.value.trim() : '',
+      participant_lastname: ficParticipantLastname ? ficParticipantLastname.value.trim() : '',
+      participant_date: ficParticipantDate ? ficParticipantDate.value : getTodayIsoLocal(),
+      participant_signature_png: participantSigPad ? participantSigPad.toDataURL() : '',
+      researcher_firstname: ficResearcherFirstname ? ficResearcherFirstname.value.trim() : '',
+      researcher_lastname: ficResearcherLastname ? ficResearcherLastname.value.trim() : '',
+      researcher_date: ficResearcherDate ? ficResearcherDate.value : getTodayIsoLocal(),
+      researcher_signature_png: researcherSigPad ? researcherSigPad.toDataURL() : '',
+      signed_at_iso: new Date().toISOString(),
+      downloaded_fic: false
+    };
+  }
+
+  function safeSignatureDataUrl(url) {
+    if (typeof url === 'string' && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(url)) {
+      return url;
+    }
+    return '';
+  }
+
+  function formatOuiNonHtml(val) {
+    const isOui = val === 'oui';
+    const isNon = val === 'non';
+    return `<span class="fic-choices">${isOui ? '☑' : '☐'} Oui &nbsp;&nbsp; ${isNon ? '☑' : '☐'} Non</span>`;
+  }
+
+  function renderSingleFicSectionHtml(rec) {
+    const pid = escapeHtml(rec.participant_id || 'PXX');
+    const pSig = safeSignatureDataUrl(rec.participant_signature_png);
+    const rSig = safeSignatureDataUrl(rec.researcher_signature_png);
+    const pSigHtml = pSig
+      ? `<img src="${pSig}" alt="Signature du participant ${pid}" class="sig-img">`
+      : '<div class="sig-missing">(Signature absente)</div>';
+    const rSigHtml = rSig
+      ? `<img src="${rSig}" alt="Signature du chercheur" class="sig-img">`
+      : '<div class="sig-missing">(Signature absente)</div>';
+
+    return `
+      <article class="fic-sheet">
+        <header class="sheet-header">
+          <div class="sheet-kicker">Université de Montréal — Département d'informatique et de recherche opérationnelle (DIRO)</div>
+          <h1>FORMULAIRE D'INFORMATION ET DE CONSENTEMENT</h1>
+          <div class="sheet-subtitle">Impact des modalités de lecture sur la révision de texte</div>
+          <div class="sheet-meta">
+            <span><strong>Code dossier :</strong> ${pid}</span> &nbsp;|&nbsp;
+            <span><strong>No de projet au CERSES :</strong> 2026-9119</span> &nbsp;|&nbsp;
+            <span><strong>Financement :</strong> CRSNG</span>
+          </div>
+          <p class="sheet-team">
+            <strong>Chercheur responsable et directeur de recherche :</strong> Damien Masson, Professeur adjoint, DIRO, Université de Montréal<br>
+            <strong>Chercheurs-étudiants :</strong> Gabriel Beaudoin (Doctorant, DIRO, UdeM), Nathan Coquerel (Maîtrise, DIRO, UdeM)
+          </p>
+        </header>
+
+        <section class="sheet-section">
+          <h2>A) Renseignements aux participant·e·s</h2>
+          <p><strong>Objectifs de la recherche :</strong> L'objectif de cette recherche est d'évaluer et de comparer expérimentalement l'efficacité de trois modalités de relecture sur écran d'ordinateur (lecture visuelle silencieuse, lecture à voix haute et lecture assistée par synthèse vocale <em>text-to-speech</em>) sur la précision et la rapidité de détection d'erreurs textuelles, la mémorisation du contenu, l'effort mental perçu et les préférences des utilisateurs.</p>
+          <p><strong>Participation à la recherche :</strong> Session en personne d'au plus 30 minutes (~5 min d'accueil et consentement, ~5 min de démonstration/entraînement, ~15 min de révision de 3 courts textes suivis de questions et évaluations, ~5 min d'entrevue finale).</p>
+          <p><strong>Enregistrements audio et captures d'écran :</strong> Avec votre consentement, l'entrevue peut être enregistrée à l'aide d'une enregistreuse numérique et des captures d'écran anonymisées (clics codés) peuvent illustrer des publications scientifiques sans information permettant de vous identifier.</p>
+          <p><strong>Risques, inconvénients et avantages :</strong> Le principal inconvénient est le temps consacré. L'étude comporte peu de risque. Si vous êtes étudiant·e à l'UdeM, votre participation n'a aucun effet sur votre parcours académique. Il n'y a pas d'avantage direct particulier ni de compensation financière.</p>
+          <p><strong>Confidentialité et conservation :</strong> Votre nom est séparé des données expérimentales codées (<code>${pid}</code>). La clé reliant votre nom au dossier est chiffrée et conservée séparément sur les serveurs sécurisés de l'UdeM. Les enregistrements et informations personnelles sont détruits 7 ans après la fin du projet ; seules les données anonymisées peuvent être conservées indéfiniment et partagées sur un dépôt ouvert si vous y consentez. Accès possible aux fins de surveillance et de contrôle par les organismes subventionnaires, l'établissement ou le CERSES.</p>
+          <p><strong>Participation volontaire, droit de retrait et responsabilité :</strong> Participation libre et volontaire ; retrait possible à tout moment sans justification et demande de retrait des données tant qu'elles demeurent identifiables et non fusionnées. Vous ne renoncez à aucun de vos droits.</p>
+          <p><strong>Personnes ressources :</strong> Étude ou retrait : Damien Masson (<a href="mailto:damien.masson@umontreal.ca">damien.masson@umontreal.ca</a>) | Droits des participants (CERSES) : <a href="mailto:cerses@umontreal.ca">cerses@umontreal.ca</a> | Plaintes (Ombudsman UdeM) : 514 343-2100 ou <a href="mailto:ombudsman@umontreal.ca">ombudsman@umontreal.ca</a>.</p>
+        </section>
+
+        <section class="sheet-section">
+          <h2>B) Consentement — Déclaration du participant ou de la participante</h2>
+          <ul class="compact-list">
+            <li>Je comprends que je peux prendre mon temps pour réfléchir avant de donner mon accord ou non à participer à la recherche.</li>
+            <li>Je peux poser des questions à l'équipe de recherche et exiger des réponses satisfaisantes.</li>
+            <li>Je comprends qu'en participant à ce projet de recherche, je ne renonce à aucun de mes droits ni ne dégage les chercheurs de leurs responsabilités.</li>
+            <li><strong>${rec.accepted_participate ? '☑' : '☐'} J'ai pris connaissance du présent formulaire d'information et de consentement et j'accepte de participer au projet de recherche.</strong></li>
+          </ul>
+
+          <table class="consent-choices-table">
+            <tr>
+              <td>J'accepte que les données de recherche de cette étude puissent être rendues disponibles à d'autres chercheur·e·s, à condition que n'y apparaissent pas mon nom ou tout autre renseignement permettant de m'identifier :</td>
+              <td>${formatOuiNonHtml(rec.open_science)}</td>
+            </tr>
+            <tr>
+              <td>Je consens à ce que l'entrevue soit enregistrée (audio) et à l'utilisation de captures d'écran de l'interface logicielle anonymisées :</td>
+              <td>${formatOuiNonHtml(rec.audio_recording)}</td>
+            </tr>
+            <tr>
+              <td>Je désire recevoir un résumé des résultats de la recherche :${rec.summary_requested === 'oui' && rec.summary_email ? `<br><strong>Courriel :</strong> ${escapeHtml(rec.summary_email)}` : ''}</td>
+              <td>${formatOuiNonHtml(rec.summary_requested)}</td>
+            </tr>
+          </table>
+
+          <div class="sig-grid">
+            <div class="sig-cell">
+              <div><strong>Nom et prénom du participant :</strong> ${escapeHtml(rec.participant_lastname)} ${escapeHtml(rec.participant_firstname)}</div>
+              <div><strong>Date :</strong> ${escapeHtml(rec.participant_date)}</div>
+              <div class="sig-box">${pSigHtml}</div>
+              <div class="sig-caption">Signature du participant ou de la participante</div>
+            </div>
+            <div class="sig-cell">
+              <div><strong>Engagement du chercheur :</strong> Conditions expliquées et engagement à respecter le présent FIC.</div>
+              <div><strong>Chercheur :</strong> ${escapeHtml(rec.researcher_lastname)} ${escapeHtml(rec.researcher_firstname)} &nbsp;|&nbsp; <strong>Date :</strong> ${escapeHtml(rec.researcher_date)}</div>
+              <div class="sig-box">${rSigHtml}</div>
+              <div class="sig-caption">Signature du/de la chercheur·e responsable</div>
+            </div>
+          </div>
+          <div class="sheet-footer">
+            Validation électronique horodatée : ${escapeHtml(rec.signed_at_iso || '')} &nbsp;|&nbsp; Document archivé séparément des données anonymisées (${pid}).
+          </div>
+        </section>
+      </article>
+    `;
+  }
+
+  function buildStandaloneConsentHtml(records, docTitle) {
+    const safeTitle = escapeHtml(docTitle || 'FIC signé — IFT 6075');
+    const bodyHtml = records.map(rec => renderSingleFicSectionHtml(rec)).join('\n');
+    return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>${safeTitle}</title>
+  <style>
+    @page { size: letter; margin: 13mm 15mm; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #111827; background: #f3f4f6; margin: 0; padding: 20px; font-size: 11.5px; line-height: 1.45; }
+    .no-print { max-width: 820px; margin: 0 auto 14px auto; background: #1f4e79; color: #ffffff; padding: 10px 16px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .no-print button { background: #ffffff; color: #1f4e79; border: none; padding: 6px 14px; font-weight: 700; border-radius: 3px; cursor: pointer; font-size: 13px; }
+    .fic-sheet { max-width: 820px; margin: 0 auto 24px auto; background: #ffffff; border: 1px solid #d1d5db; padding: 20px 26px; page-break-after: always; }
+    .fic-sheet:last-child { page-break-after: auto; }
+    .sheet-header { border-bottom: 1.5px solid #1f4e79; padding-bottom: 8px; margin-bottom: 10px; }
+    .sheet-kicker { font-size: 10.5px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.3px; }
+    h1 { font-size: 16px; margin: 4px 0 2px 0; color: #1f4e79; }
+    .sheet-subtitle { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .sheet-meta { font-size: 11px; color: #374151; margin-bottom: 4px; }
+    .sheet-team { margin: 4px 0 0 0; font-size: 11px; }
+    h2 { font-size: 12.5px; color: #1f4e79; text-transform: uppercase; border-bottom: 1px solid #e5e7eb; padding-bottom: 2px; margin: 10px 0 6px 0; }
+    p { margin: 3px 0 6px 0; text-align: justify; }
+    .compact-list { margin: 4px 0 8px 0; padding-left: 18px; }
+    .compact-list li { margin-bottom: 2px; }
+    .consent-choices-table { width: 100%; border-collapse: collapse; margin: 6px 0 10px 0; }
+    .consent-choices-table td { border: 1px solid #d1d5db; padding: 5px 8px; vertical-align: middle; font-size: 11px; }
+    .consent-choices-table td:last-child { width: 120px; text-align: center; white-space: nowrap; font-weight: 600; }
+    .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; }
+    .sig-cell { border: 1px solid #d1d5db; padding: 8px 10px; border-radius: 3px; font-size: 11px; }
+    .sig-box { height: 74px; border-bottom: 1px solid #9ca3af; margin: 6px 0 4px 0; display: flex; align-items: center; justify-content: center; background: #fcfcfd; }
+    .sig-img { max-width: 100%; max-height: 70px; object-fit: contain; }
+    .sig-missing { color: #9ca3af; font-style: italic; }
+    .sig-caption { font-size: 10px; color: #4b5563; text-align: center; }
+    .sheet-footer { margin-top: 8px; font-size: 10px; color: #6b7280; border-top: 1px dashed #e5e7eb; padding-top: 5px; }
+    @media print {
+      body { background: #ffffff; padding: 0; }
+      .no-print { display: none !important; }
+      .fic-sheet { border: none; padding: 0; margin: 0; max-width: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <span><strong>Formulaire de consentement signé (UdeM — CERSES 2026-9119)</strong></span>
+    <button type="button" onclick="window.print()">Imprimer / Enregistrer en PDF</button>
+  </div>
+  ${bodyHtml}
+</body>
+</html>`;
+  }
+
+  async function saveConsentToServer(consentRecord, htmlDoc, archivePrevious) {
+    if (!isServerConnected || !consentRecord) return false;
+    try {
+      const res = await fetch('/api/save-consent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          consent: consentRecord,
+          html: htmlDoc,
+          _archive_previous: Boolean(archivePrevious)
+        })
+      });
+      return res.ok;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function updateFicExportStatusUi(pid) {
+    if (!ficExportStatusPill) return;
+    const rec = (currentConsentRecord && currentConsentRecord.participant_id === pid)
+      ? currentConsentRecord
+      : getLocalConsent(pid);
+
+    if (!rec) {
+      ficExportStatusPill.classList.add('hidden');
+      return;
+    }
+
+    ficExportStatusPill.classList.remove('hidden');
+    if (isServerConnected) {
+      ficExportStatusPill.className = 'status-pill done';
+      ficExportStatusPill.textContent = '✓ Sauvé dans data_output/consent_forms/';
+    } else if (rec.downloaded_fic) {
+      ficExportStatusPill.className = 'status-pill done';
+      ficExportStatusPill.textContent = '✓ Téléchargé';
+    } else {
+      ficExportStatusPill.className = 'status-pill progress';
+      ficExportStatusPill.textContent = 'À télécharger';
+    }
+  }
+
+  function downloadFicForRecord(rec) {
+    if (!rec || !rec.participant_id) return;
+    const pid = rec.participant_id;
+    const html = buildStandaloneConsentHtml([rec], `FIC_${pid} — CERSES 2026-9119`);
+    downloadBlob(html, `FIC_${pid}.html`, 'text/html;charset=utf-8;');
+
+    const stored = getLocalConsent(pid);
+    if (stored) {
+      stored.downloaded_fic = true;
+      saveLocalConsent(pid, stored);
+    }
+    if (currentConsentRecord && currentConsentRecord.participant_id === pid) {
+      currentConsentRecord.downloaded_fic = true;
+    }
+    updateFicExportStatusUi(pid);
+    footerStatus.textContent = `FIC signé téléchargé : FIC_${pid}.html`;
+  }
+
+  function openPrintableFicWindow(rec) {
+    if (!rec || !rec.participant_id) return;
+    const html = buildStandaloneConsentHtml([rec], `FIC_${rec.participant_id} — CERSES 2026-9119`);
+    const win = window.open('', '_blank');
+    if (!win) {
+      downloadFicForRecord(rec);
+      alert(`La fenêtre d'impression a été bloquée par le navigateur : FIC_${rec.participant_id}.html a été téléchargé. Ouvrez-le puis faites Imprimer / Enregistrer en PDF.`);
+      return;
+    }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => {
+      try {
+        win.focus();
+        win.print();
+      } catch (_) {}
+    }, 250);
+  }
+
+  function downloadAllBrowserFicHtml() {
+    const records = getAllBrowserConsentsList();
+    if (records.length === 0) {
+      alert('Aucun formulaire de consentement signé enregistré dans ce navigateur.');
+      return;
+    }
+    const html = buildStandaloneConsentHtml(records, `Tous les FIC signés (${records.length}) — CERSES 2026-9119`);
+    downloadBlob(html, 'all_FIC_browser.html', 'text/html;charset=utf-8;');
+    footerStatus.textContent = `${records.length} FIC signés exportés (all_FIC_browser.html)`;
+  }
+
+  function openConsentScreen(options = {}) {
     const pid = sessionData.participant_id || selectedParticipant || 'PXX';
     if (consentParticipantCode) consentParticipantCode.textContent = pid;
     if (consentParticipantCodeInline) consentParticipantCodeInline.textContent = pid;
     if (consentParticipantCodeConfirm) consentParticipantCodeConfirm.textContent = pid;
-    if (checkConsentSigned) {
-      checkConsentSigned.checked = Boolean(sessionData.consent_confirmed);
-    }
-    if (btnConsentNext) {
-      btnConsentNext.disabled = !(checkConsentSigned && checkConsentSigned.checked);
+
+    if (options.reset) {
+      currentConsentRecord = null;
+      resetConsentForm();
+    } else {
+      const existingConsent =
+        (currentConsentRecord && currentConsentRecord.participant_id === pid ? currentConsentRecord : null) ||
+        getLocalConsent(pid);
+      loadConsentRecordIntoForm(existingConsent);
     }
     showScreen('consent');
   }
@@ -579,6 +1229,13 @@
     if (btnDownloadCsv) {
       btnDownloadCsv.textContent = `Télécharger le résumé (CSV — ${labelPid})`;
     }
+    if (btnDownloadFic) {
+      btnDownloadFic.textContent = `Télécharger le FIC signé (FIC_${labelPid}.html)`;
+    }
+    if (btnPrintFic) {
+      btnPrintFic.textContent = `Imprimer / Sauver FIC en PDF (${labelPid})`;
+    }
+    updateFicExportStatusUi(labelPid);
   }
 
   function renderFinishChecklist(loaded) {
@@ -588,7 +1245,7 @@
     const hasRanking = Boolean(s.final_ranking && s.final_ranking.rank_1);
     const hasInterview = Boolean(s.interview_completed) || hasNonEmptyInterviewNotes(s);
     const items = [
-      { done: Boolean(s.consent_confirmed), text: s.consent_confirmed ? '✓ Consentement (FIC)' : '○ Consentement (FIC) non coché' },
+      { done: Boolean(s.consent_confirmed), text: s.consent_confirmed ? '✓ Consentement (FIC signé)' : '○ Consentement (FIC) incomplet' },
       { done: Boolean(s.precondition), text: s.precondition ? '✓ Pré-condition' : '○ Pré-condition manquant' },
       { done: Boolean(s.calibration), text: s.calibration ? '✓ Calibration audio' : '○ Calibration par défaut' },
       { done: trialsCount >= 3, text: trialsCount >= 3 ? '✓ 3/3 blocs + questionnaires' : `⚠ ${trialsCount}/3 blocs complétés` },
@@ -615,12 +1272,13 @@
     sessionData.trials = (sessionData.trials || []).filter(
       t => t && t.agreabilite !== null && t.agreabilite !== undefined && t.effort !== null && t.effort !== undefined
     );
+    currentConsentRecord = await fetchConsentForParticipant(selectedParticipant);
 
     applyLoadedCalibration(sessionData);
     updateCalibrationButtonLabel();
 
     if (!sessionData.consent_confirmed && !sessionData.precondition) {
-      openConsentScreen();
+      openConsentScreen({ reset: false });
       return;
     }
 
@@ -632,7 +1290,7 @@
     if (sessionData.trials.length >= 3) {
       if (sessionData.final_ranking && sessionData.final_ranking.rank_1) {
         if (sessionData.interview_completed) {
-          openLoadedFinishScreen(sessionData, false);
+          await openLoadedFinishScreen(sessionData, false);
         } else if (hasNonEmptyInterviewNotes(sessionData)) {
           openInterviewGuideScreen();
         } else {
@@ -657,9 +1315,10 @@
     pendingArchiveOnFirstSave = false;
     sessionData = Object.assign(createEmptySessionData(), loaded);
     sessionData.participant_id = selectedParticipant;
+    currentConsentRecord = await fetchConsentForParticipant(selectedParticipant);
     applyLoadedCalibration(sessionData);
     if (sessionData.interview_completed) {
-      openLoadedFinishScreen(sessionData, true);
+      await openLoadedFinishScreen(sessionData, true);
     } else if (hasNonEmptyInterviewNotes(sessionData)) {
       openInterviewGuideScreen();
     } else {
@@ -667,7 +1326,7 @@
     }
   }
 
-  function openLoadedFinishScreen(loaded, openExperimenterPanel) {
+  async function openLoadedFinishScreen(loaded, openExperimenterPanel) {
     const rank = loaded.final_ranking || {};
     if (rankingRecapText) {
       if (rank.rank_1) {
@@ -680,6 +1339,10 @@
       } else {
         rankingRecapText.textContent = 'Classement non enregistré.';
       }
+    }
+
+    if (!currentConsentRecord || currentConsentRecord.participant_id !== loaded.participant_id) {
+      currentConsentRecord = await fetchConsentForParticipant(loaded.participant_id);
     }
 
     populateInterviewFieldsFromSession(loaded);
@@ -1315,6 +1978,18 @@
       });
     }
 
+    if (btnSetupDownloadFic) {
+      btnSetupDownloadFic.addEventListener('click', async () => {
+        if (!selectedParticipant) return;
+        const rec = await fetchConsentForParticipant(selectedParticipant);
+        if (!rec) {
+          alert(`Aucun formulaire de consentement numérique enregistré pour ${selectedParticipant}.`);
+          return;
+        }
+        downloadFicForRecord(rec);
+      });
+    }
+
     if (btnClearExistingSession) {
       btnClearExistingSession.addEventListener('click', () => {
         if (!selectedParticipant) return;
@@ -1322,7 +1997,7 @@
       });
     }
 
-    // 2. From Setup to Consent Checklist Screen (Étape 1)
+    // 2. From Setup to Electronic FIC Consent Screen (Étape 1)
     btnStartExperiment.addEventListener('click', () => {
       if (!selectedParticipant || !participantConfig) return;
 
@@ -1348,15 +2023,63 @@
         document.getElementById('precondition-form').reset();
       }
       updateCalibrationButtonLabel();
-      openConsentScreen();
+      openConsentScreen({ reset: true });
     });
 
-    // 2a. Consent Checklist Controls (Étape 1 -> Étape 2 Precondition)
-    if (checkConsentSigned) {
-      checkConsentSigned.addEventListener('change', () => {
-        if (btnConsentNext) {
-          btnConsentNext.disabled = !checkConsentSigned.checked;
+    // 2a. Electronic Consent Form Controls (Étape 1 -> Étape 2 Precondition)
+    initSignaturePads();
+
+    document.querySelectorAll('.btn-quickfill-researcher').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (ficResearcherFirstname) ficResearcherFirstname.value = btn.dataset.firstname || '';
+        if (ficResearcherLastname) ficResearcherLastname.value = btn.dataset.lastname || '';
+        if (ficResearcherDate && !ficResearcherDate.value) ficResearcherDate.value = getTodayIsoLocal();
+        updateConsentValidationBanner();
+      });
+    });
+
+    if (consentForm) {
+      consentForm.querySelectorAll('input[name="fic-summary-email"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+          toggleConsentEmailRow();
+          updateConsentValidationBanner();
+        });
+      });
+
+      consentForm.addEventListener('input', updateConsentValidationBanner);
+      consentForm.addEventListener('change', updateConsentValidationBanner);
+
+      consentForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const missing = getMissingConsentFields();
+        updateConsentValidationBanner();
+        if (missing.length > 0) {
+          const firstTarget = missing[0].target;
+          if (firstTarget && typeof firstTarget.scrollIntoView === 'function') {
+            firstTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          if (firstTarget && typeof firstTarget.focus === 'function') {
+            firstTarget.focus({ preventScroll: true });
+          }
+          return;
         }
+
+        const pid = sessionData.participant_id || selectedParticipant || 'PXX';
+        const rec = buildConsentRecordFromForm(pid);
+        currentConsentRecord = rec;
+        saveLocalConsent(pid, rec);
+
+        const htmlDoc = buildStandaloneConsentHtml([rec], `FIC_${pid} — CERSES 2026-9119`);
+        saveConsentToServer(rec, htmlDoc, pendingArchiveOnFirstSave);
+
+        sessionData.consent_confirmed = true;
+        sessionData.consent_confirmed_at = rec.signed_at_iso;
+        sessionData.consent_open_science = rec.open_science === 'oui';
+        sessionData.consent_audio_recording = rec.audio_recording === 'oui';
+        sessionData.consent_summary_requested = rec.summary_requested === 'oui';
+
+        await autoSaveSession();
+        showScreen('precondition');
       });
     }
 
@@ -1364,16 +2087,6 @@
       btnConsentBack.addEventListener('click', () => {
         pendingArchiveOnFirstSave = false;
         showScreen('setup');
-      });
-    }
-
-    if (btnConsentNext) {
-      btnConsentNext.addEventListener('click', () => {
-        if (!checkConsentSigned || !checkConsentSigned.checked) return;
-        sessionData.consent_confirmed = true;
-        sessionData.consent_confirmed_at = new Date().toISOString();
-        autoSaveSession();
-        showScreen('precondition');
       });
     }
 
@@ -1650,10 +2363,34 @@
       });
     }
 
-    // 22. Download CSV (single & all browser sessions)
+    // 22. Download CSV (single & all browser sessions) + signed FIC
     if (btnDownloadCsv) {
       btnDownloadCsv.addEventListener('click', () => {
         downloadCsvData();
+      });
+    }
+
+    if (btnDownloadFic) {
+      btnDownloadFic.addEventListener('click', async () => {
+        const pid = sessionData.participant_id || selectedParticipant;
+        const rec = await resolveConsentRecordForDownload(pid);
+        if (!rec) {
+          alert(`Aucun formulaire de consentement numérique enregistré pour ${pid || 'ce participant'} (ex. consentement complété avant la signature numérique ou sur papier).`);
+          return;
+        }
+        downloadFicForRecord(rec);
+      });
+    }
+
+    if (btnPrintFic) {
+      btnPrintFic.addEventListener('click', async () => {
+        const pid = sessionData.participant_id || selectedParticipant;
+        const rec = await resolveConsentRecordForDownload(pid);
+        if (!rec) {
+          alert(`Aucun formulaire de consentement numérique enregistré pour ${pid || 'ce participant'}.`);
+          return;
+        }
+        openPrintableFicWindow(rec);
       });
     }
 
@@ -1666,6 +2403,12 @@
     if (btnDownloadAllCsv) {
       btnDownloadAllCsv.addEventListener('click', () => {
         downloadAllBrowserCsvData();
+      });
+    }
+
+    if (btnDownloadAllFic) {
+      btnDownloadAllFic.addEventListener('click', () => {
+        downloadAllBrowserFicHtml();
       });
     }
 
@@ -2201,6 +2944,7 @@
     }
 
     await autoSaveSession({ downloadedOffline: offlineDownloaded });
+    updateFicExportStatusUi(sessionData.participant_id);
     showScreen('finish');
   }
 
@@ -2235,12 +2979,12 @@
 
   function getServerSaveDetailHtml(pid) {
     const safePid = escapeHtml(pid || 'PXX');
-    return `Les données codées sont enregistrées localement dans <code>data_output/raw_json/session_${safePid}.json</code> et consolidées dans <code>data_output/csv/all_participants_summary.csv</code>.`;
+    return `Les données codées sont enregistrées localement dans <code>data_output/raw_json/session_${safePid}.json</code> et consolidées dans <code>data_output/csv/all_participants_summary.csv</code> ; le FIC signé est archivé à part dans <code>data_output/consent_forms/FIC_${safePid}.html</code>.`;
   }
 
   function getOfflineSaveDetailHtml(pid) {
     const safePid = escapeHtml(pid || 'PXX');
-    return `Mode sans serveur (données 100 % locales, aucun envoi réseau) : vérifiez le dossier <em>Téléchargements</em> pour <code>session_${safePid}.json</code> (données complètes). Pour exporter également le tableau <code>summary_${safePid}.csv</code> tout de suite, cliquez sur « Télécharger le résumé (CSV — ${safePid}) » ci-dessous.`;
+    return `Mode sans serveur (données 100 % locales, aucun envoi réseau) : vérifiez <em>Téléchargements</em> pour <code>session_${safePid}.json</code>. Cliquez ensuite ci-dessous sur <strong>« Télécharger le FIC signé (FIC_${safePid}.html) »</strong> (et le CSV si souhaité) pour récupérer le formulaire de consentement signé.`;
   }
 
   async function autoSaveSession(options = {}) {
@@ -2461,6 +3205,7 @@
 
     try {
       localStorage.removeItem(`IFT6075_${pid}`);
+      localStorage.removeItem(`${CONSENT_STORAGE_PREFIX}${pid}`);
       const allKey = 'IFT6075_ALL_PARTICIPANTS';
       const allRaw = localStorage.getItem(allKey);
       if (allRaw) {
@@ -2473,6 +3218,14 @@
     updateParticipantDropdownLabels();
     updateExistingSessionNotice(pid);
     footerStatus.textContent = `Session locale de ${pid} effacée`;
+  }
+
+  async function resolveConsentRecordForDownload(pid) {
+    if (!pid) return null;
+    if (currentConsentRecord && currentConsentRecord.participant_id === pid) {
+      return currentConsentRecord;
+    }
+    return fetchConsentForParticipant(pid);
   }
 
   function downloadJsonForSession(sess) {
@@ -2570,17 +3323,19 @@
     if (btnOpenFinish) btnOpenFinish.classList.add('hidden');
     if (btnSetupDownloadJson) btnSetupDownloadJson.classList.add('hidden');
     if (btnSetupDownloadCsv) btnSetupDownloadCsv.classList.add('hidden');
+    if (btnSetupDownloadFic) btnSetupDownloadFic.classList.add('hidden');
     if (btnClearExistingSession) btnClearExistingSession.classList.add('hidden');
     btnStartExperiment.disabled = true;
     btnStartExperiment.textContent = 'Suivant — Étape 1 : Consentement (FIC)';
 
+    currentConsentRecord = null;
     if (handoffParticipantCode) handoffParticipantCode.textContent = 'PXX';
     if (handoffParticipantCodeInline) handoffParticipantCodeInline.textContent = 'PXX';
     if (consentParticipantCode) consentParticipantCode.textContent = 'PXX';
     if (consentParticipantCodeInline) consentParticipantCodeInline.textContent = 'PXX';
     if (consentParticipantCodeConfirm) consentParticipantCodeConfirm.textContent = 'PXX';
-    if (checkConsentSigned) checkConsentSigned.checked = false;
-    if (btnConsentNext) btnConsentNext.disabled = true;
+    resetConsentForm();
+    if (ficExportStatusPill) ficExportStatusPill.classList.add('hidden');
 
     if (document.getElementById('precondition-form')) {
       document.getElementById('precondition-form').reset();

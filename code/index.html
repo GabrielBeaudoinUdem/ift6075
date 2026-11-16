@@ -71,6 +71,7 @@
               <button type="button" id="btn-open-finish" class="btn btn-primary hidden">Ouvrir la synthèse / notes d'entrevue</button>
               <button type="button" id="btn-setup-download-json" class="btn btn-secondary btn-sm hidden">Télécharger JSON (PXX)</button>
               <button type="button" id="btn-setup-download-csv" class="btn btn-secondary btn-sm hidden">Télécharger CSV (PXX)</button>
+              <button type="button" id="btn-setup-download-fic" class="btn btn-secondary btn-sm hidden">Télécharger FIC signé (PXX)</button>
               <button type="button" id="btn-clear-existing-session" class="btn btn-danger-outline btn-sm hidden">Effacer et remettre à zéro</button>
             </div>
           </div>
@@ -91,46 +92,204 @@
       </section>
 
       <!-- ======================================================== -->
-      <!-- 1B. CONSENT CHECKLIST SCREEN (FORMULAIRE D'ACCEPTATION)  -->
+      <!-- 1B. ELECTRONIC CONSENT FORM SCREEN (FIC CERSES 2026-9119) -->
       <!-- ======================================================== -->
       <section id="screen-consent" class="screen">
         <div class="card">
           <div class="step-header-row">
-            <div class="step-indicator">Étape 1 : Formulaire de consentement (Acceptation)</div>
-            <span class="role-badge experimenter">Expérimentateur</span>
+            <div class="step-indicator">Étape 1 : Formulaire d'information et de consentement (FIC)</div>
+            <span class="role-badge shared">Participant &amp; Expérimentateur</span>
           </div>
-          <h1>Formulaire d'information et de consentement (FIC)</h1>
-          <p class="subtitle">Avant de céder l'écran au participant, complétez ces vérifications initiales — code attribué : <strong id="consent-participant-code">PXX</strong>.</p>
+          <h1>Formulaire d'information et de consentement</h1>
+          <p class="subtitle">Signature 100 % numérique à l'écran — code participant attribué : <strong id="consent-participant-code">PXX</strong> (vos nom et signature seront conservés dans un fichier FIC séparé des données d'analyse).</p>
           <hr>
 
-          <div class="instruction-box">
-            <h3>À effectuer avec le participant avant de continuer :</h3>
-            <ol class="guided-checklist">
-              <li>
-                <strong>Formulaire d'acceptation / consentement (papier ou PDF) :</strong> Faire lire et <strong>signer</strong> le FIC en y inscrivant le code identifiant <code id="consent-participant-code-inline">PXX</code>.
-              </li>
-              <li>
-                <strong>Préparation du matériel :</strong> Vérifier que le <strong>casque d'écoute</strong> est branché et que le <strong>dictaphone / enregistreur</strong> (pour l'entrevue finale) est prêt.
-              </li>
-              <li>
-                <strong>Suite du parcours :</strong> Juste après cette validation, le questionnaire pré-condition puis la calibration audio se feront directement dans l'interface avec le participant.
-              </li>
-            </ol>
-          </div>
+          <form id="consent-form" novalidate>
+            <!-- A) RENSEIGNEMENTS AUX PARTICIPANTS -->
+            <div class="fic-document-box">
+              <div class="fic-doc-header">
+                <div class="fic-doc-title">Impact des modalités de lecture sur la révision de texte</div>
+                <div class="fic-doc-meta">
+                  <span><strong>No de projet au CERSES :</strong> 2026-9119</span> &nbsp;|&nbsp;
+                  <span><strong>Financement :</strong> CRSNG</span>
+                </div>
+                <p class="fic-doc-team">
+                  <strong>Chercheur responsable et directeur de recherche :</strong> Damien Masson, Professeur adjoint, Département d'informatique et de recherche opérationnelle (DIRO), Université de Montréal.<br>
+                  <strong>Chercheurs-étudiants :</strong> Gabriel Beaudoin (Doctorant, DIRO, UdeM) et Nathan Coquerel (Maîtrise, DIRO, UdeM).
+                </p>
+                <p class="fic-doc-invite">
+                  Vous êtes invité·e à participer à un projet de recherche. Avant d'accepter, veuillez prendre le temps de lire ce document présentant les conditions de participation. N'hésitez pas à poser toutes les questions que vous jugerez utiles à la personne qui vous présente ce document.
+                </p>
+              </div>
 
-          <div class="warning-box">
-            <label class="checkbox-confirm-label">
-              <input type="checkbox" id="check-consent-signed">
-              <span><strong>Confirmation expérimentateur :</strong> Le formulaire de consentement (FIC) a bien été lu, accepté et signé par le participant (<span id="consent-participant-code-confirm">PXX</span>).</span>
-            </label>
-          </div>
+              <h2>A) Renseignements aux participant·e·s</h2>
 
-          <hr>
+              <h3>Objectifs de la recherche</h3>
+              <p>L'objectif de cette recherche est d'évaluer et de comparer expérimentalement l'efficacité de trois modalités de relecture sur écran d'ordinateur (la lecture visuelle silencieuse, la lecture à voix haute et la lecture assistée par synthèse vocale <em>text-to-speech</em>). L'étude vise à déterminer l'impact de ces modalités sur la précision et la rapidité de détection d'erreurs textuelles, la mémorisation du contenu, ainsi que sur l'effort mental perçu et les préférences des utilisateurs.</p>
 
-          <div class="action-row" style="justify-content: space-between;">
-            <button type="button" id="btn-consent-back" class="btn btn-secondary">← Retour à la configuration</button>
-            <button type="button" id="btn-consent-next" class="btn btn-primary btn-lg" disabled>Suivant — Questionnaire initial pré-condition</button>
-          </div>
+              <h3>Participation à la recherche</h3>
+              <p>L'intégralité de la session prendra jusqu'à 30 minutes et se déroulera en personne à l'Université de Montréal. Le déroulement de l'étude sera le suivant :</p>
+              <ul>
+                <li><strong>~5 min :</strong> Accueil, brève présentation de l'étude, puis lecture et signature du formulaire de consentement.</li>
+                <li><strong>~5 min :</strong> Présentation de l'application Web et courte démonstration de la façon de signaler des erreurs dans un texte.</li>
+                <li><strong>~15 min :</strong> Réalisation de tâches de révision de courts textes selon différentes modalités de lecture (en silence, à voix haute et avec synthèse vocale). Chaque texte sera suivi de quelques questions de compréhension et d'évaluation de votre expérience.</li>
+                <li><strong>~5 min :</strong> Courte entrevue avec le chercheur pour recueillir vos impressions générales et vos commentaires.</li>
+              </ul>
+
+              <h3>Enregistrements audio et captures d'écran</h3>
+              <p>Afin de faciliter l'analyse des données et si vous y consentez, l'entrevue sera enregistrée à l'aide d'une enregistreuse numérique. Des captures d'écran de l'interface logicielle expérimentale (affichant les textes lus et les clics codés et anonymisés) pourront également être conservées et utilisées dans des publications scientifiques pour illustrer la méthode, sans aucune information permettant de vous identifier.</p>
+
+              <h3>Risques et inconvénients</h3>
+              <p>Le principal inconvénient de cette recherche est le temps consacré à cette étude. Cette étude présente peu de risque pour vous. Vous pouvez à tout moment refuser de répondre à une question ou même mettre fin à l'entrevue, au questionnaire ou à votre participation. Si vous êtes étudiant·e à l'Université de Montréal, le fait de participer ou non au projet n'aura aucun effet sur votre parcours académique ni sur votre lien avec les chercheurs de ce projet.</p>
+
+              <h3>Avantages et bénéfices</h3>
+              <p>Il n'y a pas d'avantage direct particulier pour vous à participer à ce projet. Vous contribuerez cependant à une meilleure compréhension des différentes modalités de lecture.</p>
+
+              <h3>Confidentialité des renseignements recueillis</h3>
+              <p>L'équipe de recherche protégera les informations permettant de vous identifier. Votre nom sera séparé des autres informations le plus rapidement possible et un code attribué (<code id="consent-participant-code-inline">PXX</code>) sera utilisé plutôt que votre nom pour associer votre dossier d'étude à vos réponses. La clé reliant votre nom à votre dossier de recherche sera chiffrée et conservée séparément des données de recherche par le chercheur responsable, sur des serveurs sécurisés approuvés par l'Université de Montréal.</p>
+              <p>Les enregistrements seront transcrits et seront détruits, ainsi que toute information personnelle, 7 ans après la fin du projet. Seules les données ne permettant pas de vous identifier seront conservées après cette période aussi longtemps qu'elles peuvent avoir une utilité scientifique. À des fins de surveillance, de contrôle, de protection et de sécurité, votre dossier de recherche est accessible aux personnes mandatées par les organismes subventionnaires, par l'établissement ou par le comité d'éthique de la recherche ayant approuvé ce projet.</p>
+
+              <h3>Compensation, participation volontaire et droit de retrait</h3>
+              <p>Vous ne recevrez aucune compensation. Votre participation est entièrement volontaire et vous pouvez mettre fin à votre participation à tout moment, sans justification. Vous avez également le droit de demander le retrait de vos renseignements collectés durant l'étude, dans la mesure du possible (avant que les données ne soient rendues non identifiables ou fusionnées à d'autres).</p>
+
+              <h3>Utilisation secondaire des données et diffusion des résultats</h3>
+              <p>Si vous y consentez, les données dépersonnalisées seront conservées indéfiniment pour faciliter la vérification ou la reproduction des résultats et pourront être partagées en ligne dans un dépôt de données ouvert, sans qu'il soit possible de vous identifier. Si vous le désirez, nous vous contacterons une fois les résultats publiés avec un résumé de l'article de recherche et un lien vers l'article.</p>
+
+              <h3>Responsabilité et personnes ressources</h3>
+              <p>En acceptant de participer à cette étude, vous ne renoncez à aucun de vos droits ni ne libérez les chercheurs ou l'établissement de leurs responsabilités civiles et professionnelles.</p>
+              <ul>
+                <li><strong>Questions sur l'étude ou retrait :</strong> Damien Masson — <a href="mailto:damien.masson@umontreal.ca">damien.masson@umontreal.ca</a></li>
+                <li><strong>Préoccupations sur vos droits (CERSES) :</strong> <a href="mailto:cerses@umontreal.ca">cerses@umontreal.ca</a> — <a href="https://crr.umontreal.ca/ethique-humaine/demarches-aupres-de-votre-comite/" target="_blank" rel="noopener">crr.umontreal.ca/ethique-humaine/demarches-aupres-de-votre-comite/</a></li>
+                <li><strong>Plaintes (Ombudsman UdeM) :</strong> 514 343-2100 (9 h à 17 h) ou <a href="mailto:ombudsman@umontreal.ca">ombudsman@umontreal.ca</a> (appels à frais virés acceptés)</li>
+              </ul>
+            </div>
+
+            <!-- B) CONSENTEMENT -->
+            <div class="fic-consent-section">
+              <h2>B) Consentement — Déclaration du participant ou de la participante</h2>
+
+              <ul class="fic-declarations-list">
+                <li>Je comprends que je peux prendre mon temps pour réfléchir avant de donner mon accord ou non à participer à la recherche.</li>
+                <li>Je peux poser des questions à l'équipe de recherche et exiger des réponses satisfaisantes.</li>
+                <li>Je comprends qu'en participant à ce projet de recherche, je ne renonce à aucun de mes droits ni ne dégage les chercheurs de leurs responsabilités.</li>
+              </ul>
+
+              <div class="warning-box" style="margin: 14px 0;">
+                <label class="checkbox-confirm-label">
+                  <input type="checkbox" id="fic-accept-participate" required>
+                  <span><strong>J'ai pris connaissance du présent formulaire d'information et de consentement et j'accepte de participer au projet de recherche</strong> (code dossier : <strong id="consent-participant-code-confirm">PXX</strong>).</span>
+                </label>
+              </div>
+
+              <div class="fic-choice-group">
+                <div class="fic-choice-prompt">1. J'accepte que les données de recherche de cette étude puissent être rendues disponibles à d'autres chercheur·e·s, à condition que n'y apparaissent pas mon nom ou tout autre renseignement permettant de m'identifier :</div>
+                <div class="fic-radio-row">
+                  <label class="fic-radio-label"><input type="radio" name="fic-open-science" value="oui" required> Oui</label>
+                  <label class="fic-radio-label"><input type="radio" name="fic-open-science" value="non"> Non</label>
+                </div>
+              </div>
+
+              <div class="fic-choice-group">
+                <div class="fic-choice-prompt">2. Je consens à ce que l'entrevue soit enregistrée (audio) et à l'utilisation de captures d'écran de l'interface logicielle anonymisées :</div>
+                <div class="fic-radio-row">
+                  <label class="fic-radio-label"><input type="radio" name="fic-audio-recording" value="oui" required> Oui</label>
+                  <label class="fic-radio-label"><input type="radio" name="fic-audio-recording" value="non"> Non</label>
+                </div>
+              </div>
+
+              <div class="fic-choice-group">
+                <div class="fic-choice-prompt">3. Je désire recevoir un résumé des résultats de la recherche :</div>
+                <div class="fic-radio-row">
+                  <label class="fic-radio-label"><input type="radio" name="fic-summary-email" value="oui" required> Oui</label>
+                  <label class="fic-radio-label"><input type="radio" name="fic-summary-email" value="non"> Non</label>
+                </div>
+                <div id="fic-email-row" class="fic-email-row hidden">
+                  <label for="fic-participant-email"><strong>Courriel pour l'envoi du résumé :</strong></label>
+                  <input type="email" id="fic-participant-email" class="form-control" placeholder="prenom.nom@umontreal.ca">
+                </div>
+              </div>
+
+              <div class="fic-identity-grid">
+                <div class="form-group">
+                  <label for="fic-participant-firstname"><strong>Prénom du participant :</strong></label>
+                  <input type="text" id="fic-participant-firstname" class="form-control" required placeholder="Prénom">
+                </div>
+                <div class="form-group">
+                  <label for="fic-participant-lastname"><strong>Nom du participant :</strong></label>
+                  <input type="text" id="fic-participant-lastname" class="form-control" required placeholder="Nom de famille">
+                </div>
+                <div class="form-group">
+                  <label for="fic-participant-date"><strong>Date :</strong></label>
+                  <input type="date" id="fic-participant-date" class="form-control" required>
+                </div>
+              </div>
+
+              <div class="signature-block">
+                <div class="signature-header">
+                  <label for="fic-participant-sig-canvas"><strong>Signature du participant ou de la participante :</strong> <span class="help-inline">(signez avec la souris, le pavé tactile ou au doigt)</span></label>
+                  <button type="button" id="btn-clear-participant-sig" class="btn btn-secondary btn-sm">Effacer la signature</button>
+                </div>
+                <div class="signature-pad-wrapper" id="fic-participant-sig-wrap">
+                  <canvas id="fic-participant-sig-canvas" class="signature-canvas" width="680" height="160"></canvas>
+                  <div class="signature-baseline" aria-hidden="true"><span>✕</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ENGAGEMENT DU CHERCHEUR -->
+            <div class="fic-consent-section fic-researcher-section">
+              <div class="step-header-row" style="margin-bottom: 8px;">
+                <h2 style="margin: 0;">Engagement du chercheur ou de la chercheure responsable</h2>
+                <span class="role-badge experimenter">Expérimentateur</span>
+              </div>
+              <p class="fic-researcher-pledge">J'ai expliqué au/à la participant·e les conditions de participation au projet de recherche. J'ai répondu au meilleur de ma connaissance aux questions posées et je me suis assuré de la compréhension du/de la participant·e. Je m'engage, avec l'équipe de recherche, à respecter ce qui a été convenu au présent formulaire d'information et de consentement.</p>
+
+              <div class="fic-quickfill-row">
+                <span class="help-inline">Remplissage rapide chercheur :</span>
+                <button type="button" class="btn btn-secondary btn-sm btn-quickfill-researcher" data-firstname="Gabriel" data-lastname="Beaudoin">Gabriel Beaudoin</button>
+                <button type="button" class="btn btn-secondary btn-sm btn-quickfill-researcher" data-firstname="Nathan" data-lastname="Coquerel">Nathan Coquerel</button>
+              </div>
+
+              <div class="fic-identity-grid">
+                <div class="form-group">
+                  <label for="fic-researcher-firstname"><strong>Prénom du chercheur :</strong></label>
+                  <input type="text" id="fic-researcher-firstname" class="form-control" required placeholder="Prénom">
+                </div>
+                <div class="form-group">
+                  <label for="fic-researcher-lastname"><strong>Nom du chercheur :</strong></label>
+                  <input type="text" id="fic-researcher-lastname" class="form-control" required placeholder="Nom">
+                </div>
+                <div class="form-group">
+                  <label for="fic-researcher-date"><strong>Date :</strong></label>
+                  <input type="date" id="fic-researcher-date" class="form-control" required>
+                </div>
+              </div>
+
+              <div class="signature-block">
+                <div class="signature-header">
+                  <label for="fic-researcher-sig-canvas"><strong>Signature du chercheur :</strong> <span class="help-inline">(signez avec la souris ou le pavé tactile)</span></label>
+                  <button type="button" id="btn-clear-researcher-sig" class="btn btn-secondary btn-sm">Effacer la signature</button>
+                </div>
+                <div class="signature-pad-wrapper" id="fic-researcher-sig-wrap">
+                  <canvas id="fic-researcher-sig-canvas" class="signature-canvas" width="680" height="160"></canvas>
+                  <div class="signature-baseline" aria-hidden="true"><span>✕</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="info-box">
+              <strong>Vérification matériel &amp; confidentialité :</strong> Vérifiez que le <strong>casque d'écoute</strong> est branché (et que le <strong>dictaphone</strong> est prêt si l'audio a été accepté). Le fichier FIC signé (avec nom et signatures) sera sauvegardé séparément des données codées <code>PXX</code> et pourra être téléchargé à la fin de l'expérience.
+            </div>
+
+            <div id="fic-validation-status" class="fic-validation-status"></div>
+
+            <hr>
+
+            <div class="action-row" style="justify-content: space-between;">
+              <button type="button" id="btn-consent-back" class="btn btn-secondary">← Retour à la configuration</button>
+              <button type="submit" id="btn-consent-next" class="btn btn-primary btn-lg">Valider le consentement et continuer → Questionnaire initial</button>
+            </div>
+          </form>
         </div>
       </section>
 
@@ -874,17 +1033,30 @@
 
           <!-- Always-visible export box for complete participant & browser-wide data -->
           <div class="export-panel-box">
-            <h3 style="margin-top: 0;">Téléchargement complet des données du test</h3>
+            <h3 style="margin-top: 0;">Téléchargement complet des données et du consentement signé</h3>
             <p class="help-text" style="margin-top: 0;">
-              Le JSON contient toutes les données complètes (consentement, pré-condition, calibration, pratique, 3 blocs, clics, événements audio, classement et entrevue). Le CSV contient le tableau d'analyse à 36 colonnes.
+              <strong>Séparation confidentielle :</strong> Le JSON (<code>session_PXX.json</code>) et le CSV contiennent uniquement les données expérimentales codées (sans nom ni signature). Le formulaire signé (<code>FIC_PXX.html</code>) est exporté <strong>séparément</strong>.
             </p>
-            <div class="action-row export-buttons" style="margin-top: 10px;">
+            <div class="export-group-label">1. Données codées du test (PXX)</div>
+            <div class="action-row export-buttons" style="margin-top: 6px;">
               <button type="button" id="btn-download-json" class="btn btn-primary">Télécharger tout le test (JSON — PXX)</button>
               <button type="button" id="btn-download-csv" class="btn btn-primary">Télécharger le résumé (CSV — PXX)</button>
             </div>
-            <div class="action-row export-buttons" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0;">
-              <button type="button" id="btn-download-all-json" class="btn btn-secondary btn-sm">Télécharger toutes les sessions du navigateur (JSON global)</button>
-              <button type="button" id="btn-download-all-csv" class="btn btn-secondary btn-sm">Télécharger toutes les sessions du navigateur (CSV consolidé)</button>
+
+            <div class="export-group-label" style="margin-top: 14px;">
+              2. Formulaire de consentement signé (FIC — fichier séparé)
+              <span id="fic-export-status-pill" class="status-pill progress hidden">À télécharger</span>
+            </div>
+            <div class="action-row export-buttons" style="margin-top: 6px;">
+              <button type="button" id="btn-download-fic" class="btn btn-primary">Télécharger le FIC signé (FIC_PXX.html)</button>
+              <button type="button" id="btn-print-fic" class="btn btn-secondary">Imprimer / Sauver FIC en PDF (PXX)</button>
+            </div>
+
+            <div class="export-group-label" style="margin-top: 14px;">3. Export global de ce navigateur (tous les participants)</div>
+            <div class="action-row export-buttons" style="margin-top: 6px;">
+              <button type="button" id="btn-download-all-json" class="btn btn-secondary btn-sm">Télécharger toutes les sessions (JSON global)</button>
+              <button type="button" id="btn-download-all-csv" class="btn btn-secondary btn-sm">Télécharger toutes les sessions (CSV consolidé)</button>
+              <button type="button" id="btn-download-all-fic" class="btn btn-secondary btn-sm">Télécharger tous les FIC signés (HTML consolidé)</button>
             </div>
           </div>
 

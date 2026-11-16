@@ -58,7 +58,7 @@ Tous les textes et les fautes insérées sont centralisés dans un seul fichier 
 
 ## 3. Parcours Guidé et Où Retrouver les Questions
 
-- **Étape 1 — Consentement (FIC) (`#screen-consent`) :** Rappel obligatoire de faire signer le formulaire papier/PDF (`PXX`) et de préparer casque + dictaphone avant de continuer.
+- **Étape 1 — Consentement numérique (FIC) (`#screen-consent`) :** Formulaire d'information et de consentement (CERSES 2026-9119) lu, coché et signé directement à l'écran par le participant et le chercheur (stocké et téléchargé séparément des données codées `PXX`).
 - **Étape 2 — Questionnaire pré-condition (`#screen-precondition`) :** Intégré dans **[`code/index.html`](code/index.html)** (âge, genre, aisance, habitudes de relecture).
 - **Étape 3 — Calibration audio (`#screen-audio-calibration`) :** Test du volume et de la vitesse avec l'extrait `audio/calibration_test.mp3` avant l'entraînement.
 - **Questions de compréhension des textes (3 questions par histoire) :** Définies dans **[`code/build_experiment_data.py`](code/build_experiment_data.py)** sous la clé `"quiz"`.
@@ -80,7 +80,9 @@ Toutes les données de passation sont automatiquement écrites dans le dossier :
    - **`data_output/csv/summary_PXX.csv`**
 3. **Données brutes détaillées JSON :**  
    - **`data_output/raw_json/session_PXX.json`**  
-   - Contient l'historique complet de la session, incluant chaque mot cliqué avec son horodatage précis à la milliseconde (`click_events`).
+   - Contient l'historique complet de la session codée (`PXX`, sans nom ni signature), incluant chaque mot cliqué avec son horodatage précis à la milliseconde (`click_events`).
+4. **Formulaires de consentement signés (fichier séparé) :**  
+   - **`data_output/consent_forms/FIC_PXX.html`** (ou export individuel / consolidé `FIC_PXX.html` / `all_FIC_browser.html` depuis l'interface en ligne) — archivé séparément et ignoré par Git (`.gitignore`).
 
 ---
 

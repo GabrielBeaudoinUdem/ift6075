@@ -27,10 +27,14 @@ OUTPUT_DIR = os.path.join(BASE_DIR, 'data_output')
 JSON_DIR = os.path.join(OUTPUT_DIR, 'raw_json')
 BACKUP_DIR = os.path.join(JSON_DIR, 'backups')
 CSV_DIR = os.path.join(OUTPUT_DIR, 'csv')
+CONSENT_DIR = os.path.join(OUTPUT_DIR, 'consent_forms')
+CONSENT_BACKUP_DIR = os.path.join(CONSENT_DIR, 'backups')
 
 os.makedirs(JSON_DIR, exist_ok=True)
 os.makedirs(BACKUP_DIR, exist_ok=True)
 os.makedirs(CSV_DIR, exist_ok=True)
+os.makedirs(CONSENT_DIR, exist_ok=True)
+os.makedirs(CONSENT_BACKUP_DIR, exist_ok=True)
 
 MASTER_CSV_FILE = os.path.join(CSV_DIR, 'all_participants_summary.csv')
 
@@ -221,9 +225,11 @@ class ExperimentRequestHandler(SimpleHTTPRequestHandler):
                     has_ranking = bool((sdata.get('final_ranking') or {}).get('rank_1'))
                     intw = sdata.get('interview_answers') or {}
                     has_interview = any(str(v).strip() for v in intw.values())
+                    consent_json_path = os.path.join(CONSENT_DIR, f"FIC_{pid}.json")
                     participants[pid] = {
                         'exists': True,
                         'has_consent': bool(sdata.get('consent_confirmed')),
+                        'has_consent_file': os.path.isfile(consent_json_path),
                         'trials_count': len(completed_trials),
                         'completed': len(completed_trials) >= 3 and has_ranking,
                         'has_ranking': has_ranking,
@@ -253,6 +259,20 @@ class ExperimentRequestHandler(SimpleHTTPRequestHandler):
                 with open(json_path, 'r', encoding='utf-8') as f:
                     sdata = json.load(f)
                 self.send_json(200, {'status': 'ok', 'session': sdata})
+            except Exception as e:
+                self.send_json(500, {'status': 'error', 'message': str(e)})
+            return
+
+        if path_only.startswith('/api/consent/'):
+            pid = safe_participant_id(path_only[len('/api/consent/'):])
+            consent_json_path = os.path.join(CONSENT_DIR, f"FIC_{pid}.json")
+            if not os.path.isfile(consent_json_path):
+                self.send_json(404, {'status': 'not_found', 'message': f'Aucun FIC signé trouvé pour {pid}'})
+                return
+            try:
+                with open(consent_json_path, 'r', encoding='utf-8') as f:
+                    cdata = json.load(f)
+                self.send_json(200, {'status': 'ok', 'consent': cdata})
             except Exception as e:
                 self.send_json(500, {'status': 'error', 'message': str(e)})
             return
@@ -318,6 +338,49 @@ class ExperimentRequestHandler(SimpleHTTPRequestHandler):
                 self.send_json(200, response)
             except Exception as e:
                 print(f"[ERREUR] Échec de sauvegarde : {e}", file=sys.stderr)
+                self.send_json(500, {'status': 'error', 'message': str(e)})
+        elif path_only == '/api/save-consent':
+            try:
+                content_length = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(content_length)
+                payload = json.loads(body.decode('utf-8'))
+
+                consent_data = payload.get('consent') if isinstance(payload, dict) else None
+                html_doc = payload.get('html') if isinstance(payload, dict) else ''
+                if not isinstance(consent_data, dict):
+                    self.send_json(400, {'status': 'error', 'message': 'Objet consent invalide'})
+                    return
+
+                pid = safe_participant_id(consent_data.get('participant_id', 'UNKNOWN'))
+                archive_previous = bool(payload.get('_archive_previous', False))
+                now_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+                consent_json_filename = f"FIC_{pid}.json"
+                consent_html_filename = f"FIC_{pid}.html"
+                consent_json_path = os.path.join(CONSENT_DIR, consent_json_filename)
+                consent_html_path = os.path.join(CONSENT_DIR, consent_html_filename)
+
+                if archive_previous:
+                    if os.path.isfile(consent_json_path):
+                        shutil.copy2(consent_json_path, os.path.join(CONSENT_BACKUP_DIR, f"FIC_{pid}_backup_{now_str}.json"))
+                    if os.path.isfile(consent_html_path):
+                        shutil.copy2(consent_html_path, os.path.join(CONSENT_BACKUP_DIR, f"FIC_{pid}_backup_{now_str}.html"))
+
+                with open(consent_json_path, 'w', encoding='utf-8') as f:
+                    json.dump(consent_data, f, ensure_ascii=False, indent=2)
+
+                if isinstance(html_doc, str) and html_doc.strip():
+                    with open(consent_html_path, 'w', encoding='utf-8') as f:
+                        f.write(html_doc)
+
+                print(f"[OK] FIC signé enregistré séparément pour {pid} -> {consent_html_filename}")
+                self.send_json(200, {
+                    'status': 'success',
+                    'consent_json': consent_json_filename,
+                    'consent_html': consent_html_filename
+                })
+            except Exception as e:
+                print(f"[ERREUR] Échec sauvegarde FIC : {e}", file=sys.stderr)
                 self.send_json(500, {'status': 'error', 'message': str(e)})
         else:
             self.send_response(404)

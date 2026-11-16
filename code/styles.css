@@ -1013,3 +1013,269 @@ textarea.form-control {
   border-color: #ef4444;
 }
 
+/* ---------------- ELECTRONIC CONSENT FORM (FIC) ---------------- */
+.role-badge.shared {
+  background-color: #f3f0ff;
+  border-color: #c4b5fd;
+  color: #5b21b6;
+}
+
+.fic-document-box {
+  background-color: #fcfcfd;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+  padding: 20px 24px;
+  margin: 14px 0 20px 0;
+  font-size: 14px;
+  line-height: 1.62;
+  color: #24292f;
+}
+
+.fic-doc-header {
+  border-bottom: 1px solid #d8dee4;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.fic-doc-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.fic-doc-meta {
+  font-size: 13px;
+  color: #4b5563;
+  margin-bottom: 8px;
+}
+
+.fic-doc-team {
+  font-size: 13.5px;
+  margin: 6px 0 10px 0;
+}
+
+.fic-doc-invite {
+  background-color: #f3f6fa;
+  border-left: 3px solid #1f4e79;
+  padding: 8px 12px;
+  margin: 8px 0 0 0;
+  font-size: 13.5px;
+}
+
+.fic-document-box h2 {
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #1f4e79;
+  margin: 10px 0 8px 0;
+}
+
+.fic-document-box h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  margin: 12px 0 4px 0;
+}
+
+.fic-document-box p {
+  margin: 4px 0 8px 0;
+}
+
+.fic-document-box ul {
+  margin: 4px 0 10px 0;
+  padding-left: 20px;
+}
+
+.fic-document-box li {
+  margin-bottom: 3px;
+}
+
+.fic-consent-section {
+  background-color: #ffffff;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+  padding: 18px 20px;
+  margin: 16px 0;
+}
+
+.fic-consent-section h2 {
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #1f4e79;
+  margin: 0 0 12px 0;
+}
+
+.fic-researcher-section {
+  background-color: #f8fafc;
+}
+
+.fic-declarations-list {
+  padding-left: 20px;
+  margin: 6px 0 12px 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.fic-declarations-list li {
+  margin-bottom: 4px;
+}
+
+.fic-choice-group {
+  border: 1px solid #e5e7eb;
+  background-color: #fafafa;
+  border-radius: 4px;
+  padding: 12px 14px;
+  margin: 10px 0;
+}
+
+.fic-choice-prompt {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.fic-radio-row {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.fic-radio-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fic-email-row {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #d1d5db;
+  max-width: 420px;
+}
+
+.fic-identity-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+@media (max-width: 680px) {
+  .fic-identity-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fic-identity-grid .form-group {
+  margin-bottom: 0;
+}
+
+.fic-quickfill-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0 4px 0;
+}
+
+.fic-researcher-pledge {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #374151;
+  margin: 6px 0 10px 0;
+}
+
+.help-inline {
+  font-size: 12.5px;
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.signature-block {
+  margin-top: 14px;
+}
+
+.signature-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.signature-pad-wrapper {
+  position: relative;
+  width: 100%;
+  height: 150px;
+  background-color: #ffffff;
+  border: 1.5px solid #9ca3af;
+  border-radius: 4px;
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.signature-pad-wrapper.signed {
+  border-color: #1f4e79;
+}
+
+.signature-canvas {
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.signature-baseline {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 30px;
+  border-bottom: 1px dashed #cbd5e1;
+  pointer-events: none;
+  z-index: 1;
+  font-size: 14px;
+  color: #94a3b8;
+  line-height: 1;
+  padding-bottom: 3px;
+}
+
+.fic-validation-status {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 4px;
+  font-size: 13.5px;
+  font-weight: 500;
+  border: 1px solid #f59e0b;
+  background-color: #fffbeb;
+  color: #92400e;
+}
+
+.fic-validation-status.ready {
+  border-color: #16a34a;
+  background-color: #f0fdf4;
+  color: #166534;
+}
+
+.export-group-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.35px;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
