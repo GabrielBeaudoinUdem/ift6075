@@ -109,12 +109,16 @@
   // Setup elements
   const serverStatusBanner = document.getElementById('server-status-banner');
   const selectParticipant = document.getElementById('select-participant');
+  const setupProgressSummary = document.getElementById('setup-progress-summary');
   const setupDetails = document.getElementById('setup-details');
   const setupOrderList = document.getElementById('setup-order-list');
   const existingSessionBanner = document.getElementById('existing-session-banner');
   const existingSessionMsg = document.getElementById('existing-session-msg');
   const btnResumeSession = document.getElementById('btn-resume-session');
   const btnOpenFinish = document.getElementById('btn-open-finish');
+  const btnSetupDownloadJson = document.getElementById('btn-setup-download-json');
+  const btnSetupDownloadCsv = document.getElementById('btn-setup-download-csv');
+  const btnClearExistingSession = document.getElementById('btn-clear-existing-session');
   const checkPractice = document.getElementById('check-practice');
   const btnStartExperiment = document.getElementById('btn-start-experiment');
 
@@ -367,7 +371,7 @@
         t => t && t.agreabilite !== null && t.agreabilite !== undefined && t.effort !== null && t.effort !== undefined
       );
       const hasRanking = Boolean(local.final_ranking && local.final_ranking.rank_1);
-      const interviewCompleted = Boolean(local.interview_completed) || hasNonEmptyInterviewNotes(local);
+      const interviewCompleted = Boolean(local.interview_completed);
       return {
         source: 'localStorage',
         trialsCount: completedTrials.length,
@@ -382,22 +386,62 @@
     return null;
   }
 
+  function renderSetupProgressSummary(doneIds, inProgressIds, totalCount) {
+    if (!setupProgressSummary) return;
+    if (doneIds.length === 0 && inProgressIds.length === 0) {
+      setupProgressSummary.classList.add('hidden');
+      setupProgressSummary.innerHTML = '';
+      return;
+    }
+
+    const todoCount = Math.max(0, totalCount - doneIds.length - inProgressIds.length);
+    const pillsHtml = [
+      `<span class="status-pill done">${doneIds.length} complété${doneIds.length > 1 ? 's' : ''}</span>`,
+      inProgressIds.length > 0 ? `<span class="status-pill progress">${inProgressIds.length} en cours</span>` : '',
+      `<span class="status-pill todo">${todoCount} restant${todoCount > 1 ? 's' : ''}</span>`
+    ].filter(Boolean).join(' ');
+
+    const detailsParts = [];
+    if (doneIds.length > 0) {
+      detailsParts.push(`<strong>Déjà complétés :</strong> ${doneIds.map(escapeHtml).join(', ')}`);
+    }
+    if (inProgressIds.length > 0) {
+      detailsParts.push(`<strong>À terminer / reprendre :</strong> ${inProgressIds.map(escapeHtml).join(', ')}`);
+    }
+
+    setupProgressSummary.innerHTML = `
+      <div><strong>Suivi sur cet appareil :</strong> ${pillsHtml}</div>
+      ${detailsParts.length > 0 ? `<div style="margin-top: 4px;">${detailsParts.join(' &nbsp;|&nbsp; ')}</div>` : ''}
+    `;
+    setupProgressSummary.classList.remove('hidden');
+  }
+
   function updateParticipantDropdownLabels() {
     if (!selectParticipant) return;
+    const doneIds = [];
+    const inProgressIds = [];
+    let totalParticipants = 0;
+
     Array.from(selectParticipant.options).forEach(opt => {
       const pid = opt.value;
       if (!pid) return;
+      totalParticipants++;
       const summary = getExistingSessionSummary(pid);
       if (!summary) {
         opt.textContent = pid;
       } else if (summary.completed && summary.interviewCompleted) {
-        opt.textContent = `${pid} — ✓ Terminé (3/3 + entrevue)`;
+        opt.textContent = `${pid} — ✓ Complété (3/3 + entrevue)`;
+        doneIds.push(pid);
       } else if (summary.completed) {
         opt.textContent = `${pid} — ⏳ Entrevue à compléter (3/3)`;
+        inProgressIds.push(pid);
       } else {
         opt.textContent = `${pid} — ⚠ En cours (${summary.trialsCount}/3)`;
+        inProgressIds.push(pid);
       }
     });
+
+    renderSetupProgressSummary(doneIds, inProgressIds, totalParticipants);
   }
 
   function updateExistingSessionNotice(pid) {
@@ -407,6 +451,9 @@
       existingSessionBanner.classList.add('hidden');
       if (btnResumeSession) btnResumeSession.classList.add('hidden');
       if (btnOpenFinish) btnOpenFinish.classList.add('hidden');
+      if (btnSetupDownloadJson) btnSetupDownloadJson.classList.add('hidden');
+      if (btnSetupDownloadCsv) btnSetupDownloadCsv.classList.add('hidden');
+      if (btnClearExistingSession) btnClearExistingSession.classList.add('hidden');
       if (btnStartExperiment) {
         btnStartExperiment.textContent = 'Suivant — Étape 1 : Consentement (FIC)';
       }
@@ -414,27 +461,42 @@
     }
 
     existingSessionBanner.classList.remove('hidden');
+    if (btnSetupDownloadJson) {
+      btnSetupDownloadJson.textContent = `Télécharger JSON (${pid})`;
+      btnSetupDownloadJson.classList.remove('hidden');
+    }
+    if (btnSetupDownloadCsv) {
+      btnSetupDownloadCsv.textContent = `Télécharger CSV (${pid})`;
+      btnSetupDownloadCsv.classList.toggle('hidden', summary.trialsCount <= 0);
+    }
+    if (btnClearExistingSession) {
+      btnClearExistingSession.textContent = `Effacer et remettre ${pid} à zéro`;
+      btnClearExistingSession.classList.toggle('hidden', Boolean(isServerConnected));
+    }
+
     if (summary.completed) {
       if (summary.interviewCompleted) {
         existingSessionMsg.innerHTML =
-          `<strong>Session complète déjà enregistrée pour ${escapeHtml(pid)}</strong> (${summary.trialsCount}/3 blocs, classement et entrevue complétés). Choisissez un autre identifiant si vous accueillez un nouveau participant, ou ouvrez sa synthèse / export complet.`;
-        if (btnOpenFinish) btnOpenFinish.textContent = 'Ouvrir la synthèse / export complet';
+          `<strong>Participant ${escapeHtml(pid)} déjà complété</strong> (${summary.trialsCount}/3 blocs, classement et entrevue enregistrés). Vous pouvez re-télécharger ses données ci-dessous, consulter sa synthèse, ou recommencer cet identifiant depuis le début.`;
+        if (btnOpenFinish) btnOpenFinish.textContent = `Ouvrir la synthèse / notes (${pid})`;
       } else {
         existingSessionMsg.innerHTML =
-          `<strong>Partie ordinateur terminée pour ${escapeHtml(pid)}</strong> (${summary.trialsCount}/3 blocs et classement enregistrés — <strong>entrevue finale à compléter</strong>). Ouvrez l'écran d'entrevue pour clôturer et télécharger les données.`;
-        if (btnOpenFinish) btnOpenFinish.textContent = 'Compléter l\'entrevue finale';
+          `<strong>Partie ordinateur complétée pour ${escapeHtml(pid)}</strong> (${summary.trialsCount}/3 blocs et classement enregistrés — <strong>entrevue finale à compléter</strong>).`;
+        if (btnOpenFinish) btnOpenFinish.textContent = `Compléter l'entrevue finale (${pid})`;
       }
       if (btnResumeSession) btnResumeSession.classList.add('hidden');
       if (btnOpenFinish) btnOpenFinish.classList.remove('hidden');
     } else {
       existingSessionMsg.innerHTML =
-        `<strong>Session interrompue trouvée pour ${escapeHtml(pid)}</strong> (${summary.trialsCount}/3 blocs complétés). Vous pouvez reprendre exactement où le participant s'est arrêté.`;
+        `<strong>Session en cours trouvée pour ${escapeHtml(pid)}</strong> (${summary.trialsCount}/3 blocs complétés). Reprenez là où vous étiez rendu ou recommencez depuis le début.`;
       if (btnResumeSession) btnResumeSession.classList.remove('hidden');
       if (btnOpenFinish) btnOpenFinish.classList.add('hidden');
     }
 
     if (btnStartExperiment) {
-      btnStartExperiment.textContent = 'Démarrer une nouvelle session (archiver l\'ancienne)';
+      btnStartExperiment.textContent = isServerConnected
+        ? 'Recommencer du début (archiver l\'ancienne session)'
+        : 'Recommencer du début (nouvelle passation)';
     }
   }
 
@@ -1229,19 +1291,50 @@
       btnOpenFinish.addEventListener('click', openCompletedSessionFinish);
     }
 
+    if (btnSetupDownloadJson) {
+      btnSetupDownloadJson.addEventListener('click', async () => {
+        if (!selectedParticipant) return;
+        const loaded = await fetchFullSessionForParticipant(selectedParticipant);
+        if (!loaded) {
+          alert(`Impossible de charger les données de ${selectedParticipant}.`);
+          return;
+        }
+        downloadJsonForSession(loaded);
+      });
+    }
+
+    if (btnSetupDownloadCsv) {
+      btnSetupDownloadCsv.addEventListener('click', async () => {
+        if (!selectedParticipant) return;
+        const loaded = await fetchFullSessionForParticipant(selectedParticipant);
+        if (!loaded) {
+          alert(`Impossible de charger les données de ${selectedParticipant}.`);
+          return;
+        }
+        downloadCsvForSession(loaded);
+      });
+    }
+
+    if (btnClearExistingSession) {
+      btnClearExistingSession.addEventListener('click', () => {
+        if (!selectedParticipant) return;
+        clearLocalParticipantSession(selectedParticipant);
+      });
+    }
+
     // 2. From Setup to Consent Checklist Screen (Étape 1)
     btnStartExperiment.addEventListener('click', () => {
       if (!selectedParticipant || !participantConfig) return;
 
       const existing = getExistingSessionSummary(selectedParticipant);
       if (existing) {
-        const msg =
-          `Des données existent déjà pour ${selectedParticipant} (${existing.trialsCount}/3 blocs).\n\n` +
-          `Voulez-vous archiver l'ancienne session dans backups/ et démarrer une nouvelle passation ?`;
+        const msg = isServerConnected
+          ? `Des données existent déjà pour ${selectedParticipant} (${existing.trialsCount}/3 blocs).\n\nVoulez-vous archiver l'ancienne session dans backups/ et recommencer du début ?`
+          : `Des données existent déjà dans ce navigateur pour ${selectedParticipant} (${existing.trialsCount}/3 blocs).\n\nVoulez-vous recommencer du début ? (L'ancienne session locale sera remplacée dès la validation du consentement.)`;
         if (!confirm(msg)) {
           return;
         }
-        pendingArchiveOnFirstSave = true;
+        pendingArchiveOnFirstSave = Boolean(isServerConnected);
       } else {
         pendingArchiveOnFirstSave = false;
       }
@@ -2359,23 +2452,58 @@
     return sorted;
   }
 
+  function clearLocalParticipantSession(pid) {
+    if (!pid || isServerConnected) return;
+    const msg =
+      `Voulez-vous vraiment effacer la session de ${pid} enregistrée dans ce navigateur ?\n\n` +
+      `Cet identifiant redeviendra vierge (${pid}) dans la liste.`;
+    if (!confirm(msg)) return;
+
+    try {
+      localStorage.removeItem(`IFT6075_${pid}`);
+      const allKey = 'IFT6075_ALL_PARTICIPANTS';
+      const allRaw = localStorage.getItem(allKey);
+      if (allRaw) {
+        const allLog = JSON.parse(allRaw) || {};
+        delete allLog[pid];
+        localStorage.setItem(allKey, JSON.stringify(allLog));
+      }
+    } catch (_) {}
+
+    updateParticipantDropdownLabels();
+    updateExistingSessionNotice(pid);
+    footerStatus.textContent = `Session locale de ${pid} effacée`;
+  }
+
+  function downloadJsonForSession(sess) {
+    if (!sess) return;
+    const pid = sess.participant_id || selectedParticipant || 'PXX';
+    const filename = `session_${pid}.json`;
+    const jsonStr = JSON.stringify(sess, null, 2);
+    downloadBlob(jsonStr, filename, 'application/json');
+  }
+
+  function downloadCsvForSession(sess) {
+    if (!sess) return;
+    const pid = sess.participant_id || selectedParticipant || 'PXX';
+    const saveTime = new Date().toISOString();
+    const rows = [
+      CSV_EXPORT_HEADERS.join(';'),
+      ...buildCsvRowsForSession(sess, saveTime)
+    ];
+    const csvContent = '\uFEFF' + rows.join('\r\n');
+    const filename = `summary_${pid}.csv`;
+    downloadBlob(csvContent, filename, 'text/csv;charset=utf-8;');
+  }
+
   function downloadJsonData() {
     syncInterviewAnswersFromDom();
-    const filename = `session_${sessionData.participant_id || 'PXX'}.json`;
-    const jsonStr = JSON.stringify(sessionData, null, 2);
-    downloadBlob(jsonStr, filename, 'application/json');
+    downloadJsonForSession(sessionData);
   }
 
   function downloadCsvData() {
     syncInterviewAnswersFromDom();
-    const saveTime = new Date().toISOString();
-    const rows = [
-      CSV_EXPORT_HEADERS.join(';'),
-      ...buildCsvRowsForSession(sessionData, saveTime)
-    ];
-    const csvContent = '\uFEFF' + rows.join('\r\n');
-    const filename = `summary_${sessionData.participant_id || 'PXX'}.csv`;
-    downloadBlob(csvContent, filename, 'text/csv;charset=utf-8;');
+    downloadCsvForSession(sessionData);
   }
 
   function downloadAllBrowserJsonData() {
@@ -2438,9 +2566,16 @@
     selectParticipant.value = '';
     setupDetails.classList.add('hidden');
     if (existingSessionBanner) existingSessionBanner.classList.add('hidden');
+    if (btnResumeSession) btnResumeSession.classList.add('hidden');
+    if (btnOpenFinish) btnOpenFinish.classList.add('hidden');
+    if (btnSetupDownloadJson) btnSetupDownloadJson.classList.add('hidden');
+    if (btnSetupDownloadCsv) btnSetupDownloadCsv.classList.add('hidden');
+    if (btnClearExistingSession) btnClearExistingSession.classList.add('hidden');
     btnStartExperiment.disabled = true;
     btnStartExperiment.textContent = 'Suivant — Étape 1 : Consentement (FIC)';
 
+    if (handoffParticipantCode) handoffParticipantCode.textContent = 'PXX';
+    if (handoffParticipantCodeInline) handoffParticipantCodeInline.textContent = 'PXX';
     if (consentParticipantCode) consentParticipantCode.textContent = 'PXX';
     if (consentParticipantCodeInline) consentParticipantCodeInline.textContent = 'PXX';
     if (consentParticipantCodeConfirm) consentParticipantCodeConfirm.textContent = 'PXX';
@@ -2465,7 +2600,6 @@
     if (intwQ4) intwQ4.value = '';
     if (intwQ5) intwQ5.value = '';
     if (intwQ6) intwQ6.value = '';
-    if (interviewNotesDetails) interviewNotesDetails.open = false;
     if (interviewSaveStatus) interviewSaveStatus.textContent = '';
     if (checkInterviewDone) checkInterviewDone.checked = false;
     if (btnFinishInterview) btnFinishInterview.disabled = true;

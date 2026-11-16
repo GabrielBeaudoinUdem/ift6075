@@ -54,6 +54,7 @@
               <option value="P11">P11</option>
               <option value="P12">P12</option>
             </select>
+            <div id="setup-progress-summary" class="setup-progress-summary hidden"></div>
           </div>
 
           <!-- Configuration summary for experimenter -->
@@ -65,9 +66,12 @@
           <!-- Existing data warning & resume actions -->
           <div id="existing-session-banner" class="warning-box hidden">
             <p id="existing-session-msg" style="margin-bottom: 0;"></p>
-            <div class="action-row" style="margin-top: 10px;">
-              <button type="button" id="btn-resume-session" class="btn btn-primary hidden">Reprendre la session en cours</button>
-              <button type="button" id="btn-open-finish" class="btn btn-secondary hidden">Ouvrir la synthèse / notes d'entrevue</button>
+            <div class="action-row" style="margin-top: 10px; flex-wrap: wrap;">
+              <button type="button" id="btn-resume-session" class="btn btn-primary hidden">Reprendre là où on s'était arrêté</button>
+              <button type="button" id="btn-open-finish" class="btn btn-primary hidden">Ouvrir la synthèse / notes d'entrevue</button>
+              <button type="button" id="btn-setup-download-json" class="btn btn-secondary btn-sm hidden">Télécharger JSON (PXX)</button>
+              <button type="button" id="btn-setup-download-csv" class="btn btn-secondary btn-sm hidden">Télécharger CSV (PXX)</button>
+              <button type="button" id="btn-clear-existing-session" class="btn btn-danger-outline btn-sm hidden">Effacer et remettre à zéro</button>
             </div>
           </div>
 

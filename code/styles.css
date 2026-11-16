@@ -964,3 +964,52 @@ textarea.form-control {
   color: #555555;
 }
 
+.setup-progress-summary {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background-color: #f8fafc;
+  border: 1px solid #d8dee4;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #2c3e50;
+  line-height: 1.6;
+}
+
+.status-pill {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  margin-right: 4px;
+}
+
+.status-pill.done {
+  background-color: #e6f4ea;
+  color: #137333;
+  border: 1px solid #a8dab5;
+}
+
+.status-pill.progress {
+  background-color: #fef7e0;
+  color: #b06000;
+  border: 1px solid #fdd663;
+}
+
+.status-pill.todo {
+  background-color: #f1f3f4;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.btn-danger-outline {
+  background-color: #ffffff;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.btn-danger-outline:hover:not(:disabled) {
+  background-color: #fef2f2;
+  border-color: #ef4444;
+}
+
