@@ -1279,3 +1279,21 @@ textarea.form-control {
   flex-wrap: wrap;
 }
 
+.export-secondary-details {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.export-secondary-details > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5563;
+  user-select: none;
+}
+
+.export-secondary-body {
+  margin-top: 10px;
+}
+

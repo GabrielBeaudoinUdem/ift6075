@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import sys
+import zipfile
 from datetime import datetime
 
 from server import (
@@ -64,14 +65,14 @@ def session_completeness_key(data, mtime):
 
 
 def collect_source_files(sources):
-    """Collect candidate session JSON files from CLI arguments (excluding backups/)."""
+    """Collect candidate session JSON or ZIP files from CLI arguments (excluding backups/)."""
     files = []
     for src in sources:
         expanded = os.path.expanduser(src)
         if os.path.isfile(expanded):
             files.append(expanded)
         elif os.path.isdir(expanded):
-            for pat in ('session_*.json', 'all_sessions*.json'):
+            for pat in ('session_*.json', 'all_sessions*.json', 'dossier_*.zip'):
                 pattern = os.path.join(expanded, pat)
                 for candidate in sorted(glob.glob(pattern)):
                     if os.path.isfile(candidate):
@@ -90,33 +91,56 @@ def extract_session_candidates(data):
     return []
 
 
+def iter_json_payloads_from_path(fpath, require_session_prefix=True):
+    """Yield (source_label, real_file_path, parsed_json) from a .json or .zip file."""
+    fname = os.path.basename(fpath)
+    if fname.lower().endswith('.zip'):
+        try:
+            with zipfile.ZipFile(fpath, 'r') as zf:
+                for info in zf.infolist():
+                    if info.is_dir():
+                        continue
+                    inner_name = os.path.basename(info.filename)
+                    if not inner_name.lower().endswith('.json'):
+                        continue
+                    if require_session_prefix and not inner_name.startswith('session_'):
+                        continue
+                    try:
+                        raw_bytes = zf.read(info.filename)
+                        yield f"{fpath}::{info.filename}", fpath, json.loads(raw_bytes.decode('utf-8'))
+                    except Exception as exc:
+                        print(f"[AVERTISSEMENT] Entrée JSON invalide dans ZIP ({fpath}::{info.filename}) : {exc}", file=sys.stderr)
+        except Exception as exc:
+            print(f"[AVERTISSEMENT] Archive ZIP invalide ignorée ({fpath}) : {exc}", file=sys.stderr)
+        return
+
+    if require_session_prefix and not (fname.startswith('session_') and fname.endswith('.json')):
+        return
+    try:
+        with open(fpath, 'r', encoding='utf-8') as f:
+            yield fpath, fpath, json.load(f)
+    except Exception as exc:
+        print(f"[AVERTISSEMENT] Fichier JSON invalide ignoré ({fpath}) : {exc}", file=sys.stderr)
+
+
 def load_best_sessions(paths, require_session_prefix=True):
     """Load and deduplicate session payloads per participant_id."""
     best_by_pid = {}
     for fpath in paths:
-        fname = os.path.basename(fpath)
-        if require_session_prefix and not (fname.startswith('session_') and fname.endswith('.json')):
-            continue
-        try:
-            with open(fpath, 'r', encoding='utf-8') as f:
-                raw_data = json.load(f)
-        except Exception as exc:
-            print(f"[AVERTISSEMENT] Fichier JSON invalide ignoré ({fpath}) : {exc}", file=sys.stderr)
-            continue
-
         mtime = os.path.getmtime(fpath)
-        for data in extract_session_candidates(raw_data):
-            pid = safe_participant_id(data.get('participant_id'))
-            score = session_completeness_key(data, mtime)
-            prev = best_by_pid.get(pid)
-            if prev is None or score > prev[0]:
-                best_by_pid[pid] = (score, data, fpath)
+        for src_label, real_path, raw_data in iter_json_payloads_from_path(fpath, require_session_prefix=require_session_prefix):
+            for data in extract_session_candidates(raw_data):
+                pid = safe_participant_id(data.get('participant_id'))
+                score = session_completeness_key(data, mtime)
+                prev = best_by_pid.get(pid)
+                if prev is None or score > prev[0]:
+                    best_by_pid[pid] = (score, data, src_label, real_path)
 
-    return {pid: (data, fpath) for pid, (_, data, fpath) in best_by_pid.items()}
+    return {pid: (data, src_label, real_path) for pid, (_, data, src_label, real_path) in best_by_pid.items()}
 
 
 def import_external_sessions(source_args):
-    """Import valid external session JSON files into data_output/raw_json/."""
+    """Import valid external session JSON (or ZIP) files into data_output/raw_json/."""
     candidate_files = collect_source_files(source_args)
     if not candidate_files:
         return 0
@@ -125,12 +149,12 @@ def import_external_sessions(source_args):
     now_str = datetime.now().strftime('%Y%m%d_%H%M%S')
     imported_count = 0
 
-    for pid, (ext_data, ext_path) in sorted(best_external.items(), key=lambda item: participant_sort_key(item[0])):
+    for pid, (ext_data, ext_label, ext_real_path) in sorted(best_external.items(), key=lambda item: participant_sort_key(item[0])):
         dest_path = os.path.join(JSON_DIR, f"session_{pid}.json")
-        if os.path.abspath(ext_path) == os.path.abspath(dest_path):
+        if ext_label == ext_real_path and os.path.abspath(ext_real_path) == os.path.abspath(dest_path):
             continue
 
-        ext_score = session_completeness_key(ext_data, os.path.getmtime(ext_path))
+        ext_score = session_completeness_key(ext_data, os.path.getmtime(ext_real_path))
         if os.path.isfile(dest_path):
             try:
                 with open(dest_path, 'r', encoding='utf-8') as f:
@@ -139,7 +163,7 @@ def import_external_sessions(source_args):
                     continue
                 existing_score = session_completeness_key(existing_data, os.path.getmtime(dest_path))
                 if ext_score <= existing_score:
-                    print(f"[INFO] {pid} : version existante dans raw_json/ conservée (au moins aussi récente que {os.path.basename(ext_path)}).")
+                    print(f"[INFO] {pid} : version existante dans raw_json/ conservée (au moins aussi récente que {os.path.basename(ext_real_path)}).")
                     continue
             except Exception:
                 pass
@@ -149,7 +173,7 @@ def import_external_sessions(source_args):
         with open(dest_path, 'w', encoding='utf-8') as f:
             json.dump(ext_data, f, ensure_ascii=False, indent=2)
         imported_count += 1
-        print(f"[IMPORT] {pid} <- {ext_path} -> session_{pid}.json")
+        print(f"[IMPORT] {pid} <- {ext_label} -> session_{pid}.json")
 
     return imported_count
 
@@ -164,7 +188,7 @@ def rebuild_all_csvs():
     count_participants = 0
 
     for pid in sorted(sessions.keys(), key=participant_sort_key):
-        sdata, _ = sessions[pid]
+        sdata, _, _ = sessions[pid]
         rows = build_participant_csv_rows(sdata, pid, now_str)
         part_csv_path = os.path.join(CSV_DIR, f"summary_{pid}.csv")
         try:

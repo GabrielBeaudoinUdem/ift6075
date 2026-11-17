@@ -125,6 +125,7 @@
   const existingSessionMsg = document.getElementById('existing-session-msg');
   const btnResumeSession = document.getElementById('btn-resume-session');
   const btnOpenFinish = document.getElementById('btn-open-finish');
+  const btnSetupDownloadBundle = document.getElementById('btn-setup-download-bundle');
   const btnSetupDownloadJson = document.getElementById('btn-setup-download-json');
   const btnSetupDownloadCsv = document.getElementById('btn-setup-download-csv');
   const btnSetupDownloadFic = document.getElementById('btn-setup-download-fic');
@@ -250,6 +251,7 @@
   const experimenterPanel = document.getElementById('experimenter-panel');
   const rankingRecapText = document.getElementById('ranking-recap-text');
   const summaryTableBody = document.getElementById('summary-table-body');
+  const btnDownloadBundle = document.getElementById('btn-download-bundle');
   const btnDownloadJson = document.getElementById('btn-download-json');
   const btnDownloadCsv = document.getElementById('btn-download-csv');
   const ficExportStatusPill = document.getElementById('fic-export-status-pill');
@@ -352,11 +354,11 @@
       } else if (window.location.protocol !== 'file:') {
         serverStatusBanner.className = 'info-box status-banner-info';
         serverStatusBanner.innerHTML =
-          '<strong>Mode en ligne (hébergement statique / GitHub Pages) :</strong> aucune donnée n\'est envoyée sur Internet. Le fichier complet (<code>session_PXX.json</code>) reste 100 % local et sera téléchargé automatiquement à la fin de l\'entrevue (avec export CSV en 1 clic).';
+          '<strong>Mode en ligne (hébergement statique / GitHub Pages) :</strong> aucune donnée n\'est envoyée sur Internet. Tout est conservé localement et regroupé dans un seul fichier <code>dossier_PXX.zip</code> (FIC signé + JSON + CSV) téléchargé automatiquement à la fin de l\'entrevue.';
       } else {
         serverStatusBanner.className = 'info-box status-banner-warn';
         serverStatusBanner.innerHTML =
-          '<strong>Mode fichier local (<code>file://</code>) :</strong> la session reste sauvegardée dans le navigateur (<code>localStorage</code>) et téléchargera <code>session_PXX.json</code> à la fin. Pour l\'écriture automatique dans <code>data_output/</code>, lancez <code>Lancer_Experience.command</code> (ou <code>python3 server.py</code>).';
+          '<strong>Mode fichier local (<code>file://</code>) :</strong> la session reste sauvegardée dans le navigateur (<code>localStorage</code>) et téléchargera <code>dossier_PXX.zip</code> (FIC signé + JSON + CSV) à la fin. Pour l\'écriture automatique dans <code>data_output/</code>, lancez <code>Lancer_Experience.command</code> (ou <code>python3 server.py</code>).';
       }
     }
 
@@ -536,7 +538,9 @@
       existingSessionBanner.classList.add('hidden');
       if (btnResumeSession) btnResumeSession.classList.add('hidden');
       if (btnOpenFinish) btnOpenFinish.classList.add('hidden');
-      if (btnSetupDownloadJson) btnSetupDownloadJson.classList.add('hidden');
+      if (btnSetupDownloadBundle) btnSetupDownloadBundle.classList.add('hidden');
+      if (btnSetupDownloadBundle) btnSetupDownloadBundle.classList.add('hidden');
+    if (btnSetupDownloadJson) btnSetupDownloadJson.classList.add('hidden');
       if (btnSetupDownloadCsv) btnSetupDownloadCsv.classList.add('hidden');
       if (btnSetupDownloadFic) btnSetupDownloadFic.classList.add('hidden');
       if (btnClearExistingSession) btnClearExistingSession.classList.add('hidden');
@@ -547,6 +551,12 @@
     }
 
     existingSessionBanner.classList.remove('hidden');
+    if (btnSetupDownloadBundle) {
+      btnSetupDownloadBundle.textContent = summary.hasConsentFile
+        ? `Télécharger dossier complet (FIC + JSON — ${pid}.zip)`
+        : `Télécharger dossier (JSON + CSV — ${pid}.zip)`;
+      btnSetupDownloadBundle.classList.remove('hidden');
+    }
     if (btnSetupDownloadJson) {
       btnSetupDownloadJson.textContent = `Télécharger JSON (${pid})`;
       btnSetupDownloadJson.classList.remove('hidden');
@@ -1096,6 +1106,19 @@
     }
   }
 
+  function markFicDownloaded(pid) {
+    if (!pid) return;
+    const stored = getLocalConsent(pid);
+    if (stored) {
+      stored.downloaded_fic = true;
+      saveLocalConsent(pid, stored);
+    }
+    if (currentConsentRecord && currentConsentRecord.participant_id === pid) {
+      currentConsentRecord.downloaded_fic = true;
+    }
+    updateFicExportStatusUi(pid);
+  }
+
   function updateFicExportStatusUi(pid) {
     if (!ficExportStatusPill) return;
     const rec = (currentConsentRecord && currentConsentRecord.participant_id === pid)
@@ -1110,10 +1133,10 @@
     ficExportStatusPill.classList.remove('hidden');
     if (isServerConnected) {
       ficExportStatusPill.className = 'status-pill done';
-      ficExportStatusPill.textContent = '✓ Sauvé dans data_output/consent_forms/';
+      ficExportStatusPill.textContent = '✓ Sauvé localement (data_output/)';
     } else if (rec.downloaded_fic) {
       ficExportStatusPill.className = 'status-pill done';
-      ficExportStatusPill.textContent = '✓ Téléchargé';
+      ficExportStatusPill.textContent = '✓ FIC + JSON téléchargés';
     } else {
       ficExportStatusPill.className = 'status-pill progress';
       ficExportStatusPill.textContent = 'À télécharger';
@@ -1125,16 +1148,7 @@
     const pid = rec.participant_id;
     const html = buildStandaloneConsentHtml([rec], `FIC_${pid} — CERSES 2026-9119`);
     downloadBlob(html, `FIC_${pid}.html`, 'text/html;charset=utf-8;');
-
-    const stored = getLocalConsent(pid);
-    if (stored) {
-      stored.downloaded_fic = true;
-      saveLocalConsent(pid, stored);
-    }
-    if (currentConsentRecord && currentConsentRecord.participant_id === pid) {
-      currentConsentRecord.downloaded_fic = true;
-    }
-    updateFicExportStatusUi(pid);
+    markFicDownloaded(pid);
     footerStatus.textContent = `FIC signé téléchargé : FIC_${pid}.html`;
   }
 
@@ -1223,14 +1237,17 @@
 
   function updateDownloadButtonLabels(pid) {
     const labelPid = pid || 'PXX';
+    if (btnDownloadBundle) {
+      btnDownloadBundle.textContent = `Télécharger tout (FIC + JSON + CSV — dossier_${labelPid}.zip)`;
+    }
     if (btnDownloadJson) {
-      btnDownloadJson.textContent = `Télécharger tout le test (JSON — ${labelPid})`;
+      btnDownloadJson.textContent = `Télécharger JSON seul (${labelPid})`;
     }
     if (btnDownloadCsv) {
-      btnDownloadCsv.textContent = `Télécharger le résumé (CSV — ${labelPid})`;
+      btnDownloadCsv.textContent = `Télécharger CSV seul (${labelPid})`;
     }
     if (btnDownloadFic) {
-      btnDownloadFic.textContent = `Télécharger le FIC signé (FIC_${labelPid}.html)`;
+      btnDownloadFic.textContent = `Télécharger FIC signé seul (FIC_${labelPid}.html)`;
     }
     if (btnPrintFic) {
       btnPrintFic.textContent = `Imprimer / Sauver FIC en PDF (${labelPid})`;
@@ -1954,6 +1971,21 @@
       btnOpenFinish.addEventListener('click', openCompletedSessionFinish);
     }
 
+    if (btnSetupDownloadBundle) {
+      btnSetupDownloadBundle.addEventListener('click', async () => {
+        if (!selectedParticipant) return;
+        const [loaded, rec] = await Promise.all([
+          fetchFullSessionForParticipant(selectedParticipant),
+          fetchConsentForParticipant(selectedParticipant)
+        ]);
+        if (!loaded) {
+          alert(`Impossible de charger les données de ${selectedParticipant}.`);
+          return;
+        }
+        downloadBundleForParticipant(loaded, rec);
+      });
+    }
+
     if (btnSetupDownloadJson) {
       btnSetupDownloadJson.addEventListener('click', async () => {
         if (!selectedParticipant) return;
@@ -2356,7 +2388,16 @@
       });
     }
 
-    // 21. Download JSON (single & all browser sessions)
+    // 21. Single-click ZIP Bundle + Individual Downloads (JSON, CSV, FIC)
+    if (btnDownloadBundle) {
+      btnDownloadBundle.addEventListener('click', async () => {
+        syncInterviewAnswersFromDom();
+        const pid = sessionData.participant_id || selectedParticipant;
+        const rec = await resolveConsentRecordForDownload(pid);
+        downloadBundleForParticipant(sessionData, rec);
+      });
+    }
+
     if (btnDownloadJson) {
       btnDownloadJson.addEventListener('click', () => {
         downloadJsonData();
@@ -2938,12 +2979,14 @@
     updateDownloadButtonLabels(sessionData.participant_id);
 
     let offlineDownloaded = false;
+    let offlineBundleFilename = null;
     if (!isServerConnected) {
-      downloadJsonData();
-      offlineDownloaded = true;
+      const rec = await resolveConsentRecordForDownload(sessionData.participant_id);
+      offlineBundleFilename = downloadBundleForParticipant(sessionData, rec);
+      offlineDownloaded = Boolean(offlineBundleFilename);
     }
 
-    await autoSaveSession({ downloadedOffline: offlineDownloaded });
+    await autoSaveSession({ downloadedOffline: offlineDownloaded, offlineFilename: offlineBundleFilename });
     updateFicExportStatusUi(sessionData.participant_id);
     showScreen('finish');
   }
@@ -2984,13 +3027,14 @@
 
   function getOfflineSaveDetailHtml(pid) {
     const safePid = escapeHtml(pid || 'PXX');
-    return `Mode sans serveur (données 100 % locales, aucun envoi réseau) : vérifiez <em>Téléchargements</em> pour <code>session_${safePid}.json</code>. Cliquez ensuite ci-dessous sur <strong>« Télécharger le FIC signé (FIC_${safePid}.html) »</strong> (et le CSV si souhaité) pour récupérer le formulaire de consentement signé.`;
+    return `Mode sans serveur (données 100 % locales, aucun envoi réseau) : tout est regroupé dans le fichier <code>dossier_${safePid}.zip</code> (contenant <code>FIC_${safePid}.html</code>, <code>session_${safePid}.json</code> et <code>summary_${safePid}.csv</code>). Utilisez le bouton ci-dessous pour le re-télécharger à tout moment.`;
   }
 
   async function autoSaveSession(options = {}) {
     try {
       if (!selectedParticipant) return;
       const downloadedOffline = Boolean(options && options.downloadedOffline);
+      const offlineFilename = (options && options.offlineFilename) || `dossier_${selectedParticipant}.zip`;
       const pidCode = escapeHtml(selectedParticipant);
 
       // 1. Sauvegarde locale dans le navigateur
@@ -3007,7 +3051,7 @@
       // 2. Sans serveur local (ex. GitHub Pages ou file://), ne pas appeler /api/save
       if (!isServerConnected) {
         footerStatus.textContent = downloadedOffline
-          ? `Log complet téléchargé : session_${selectedParticipant}.json`
+          ? `Dossier complet téléchargé : ${offlineFilename}`
           : `Sauvegarde locale OK (${selectedParticipant})`;
         const hasFinished = Boolean(
           sessionData.final_ranking &&
@@ -3015,10 +3059,10 @@
           sessionData.interview_completed
         );
         const statusMsg = downloadedOffline
-          ? `<strong>Téléchargement automatique réussi :</strong> <code>session_${pidCode}.json</code> (données complètes du test) enregistré sur cet ordinateur et sauvegardé dans le navigateur.`
+          ? `<strong>Téléchargement automatique réussi :</strong> <code>${escapeHtml(offlineFilename)}</code> (FIC signé + JSON + CSV) enregistré dans <em>Téléchargements</em> et sauvegardé dans le navigateur.`
           : hasFinished
-            ? `<strong>Sauvegarde locale mise à jour (<code>localStorage</code>) :</strong> utilisez les boutons ci-dessous pour télécharger les données complètes à jour.`
-            : `<strong>Mode sans serveur (local) :</strong> session sauvegardée dans le navigateur (<code>localStorage</code>). Le fichier complet <code>session_${pidCode}.json</code> sera téléchargé automatiquement après l'entrevue.`;
+            ? `<strong>Sauvegarde locale mise à jour (<code>localStorage</code>) :</strong> cliquez sur le bouton ci-dessous pour télécharger <code>dossier_${pidCode}.zip</code> (FIC + JSON + CSV).`
+            : `<strong>Mode sans serveur (local) :</strong> session sauvegardée dans le navigateur (<code>localStorage</code>). Le dossier complet <code>dossier_${pidCode}.zip</code> sera téléchargé automatiquement après l'entrevue.`;
         updateFinalSaveDisplay(statusMsg, getOfflineSaveDetailHtml(selectedParticipant));
         return;
       }
@@ -3228,6 +3272,15 @@
     return fetchConsentForParticipant(pid);
   }
 
+  function buildCsvContentForSession(sess) {
+    const saveTime = new Date().toISOString();
+    const rows = [
+      CSV_EXPORT_HEADERS.join(';'),
+      ...buildCsvRowsForSession(sess, saveTime)
+    ];
+    return '\uFEFF' + rows.join('\r\n');
+  }
+
   function downloadJsonForSession(sess) {
     if (!sess) return;
     const pid = sess.participant_id || selectedParticipant || 'PXX';
@@ -3239,14 +3292,146 @@
   function downloadCsvForSession(sess) {
     if (!sess) return;
     const pid = sess.participant_id || selectedParticipant || 'PXX';
-    const saveTime = new Date().toISOString();
-    const rows = [
-      CSV_EXPORT_HEADERS.join(';'),
-      ...buildCsvRowsForSession(sess, saveTime)
-    ];
-    const csvContent = '\uFEFF' + rows.join('\r\n');
+    const csvContent = buildCsvContentForSession(sess);
     const filename = `summary_${pid}.csv`;
     downloadBlob(csvContent, filename, 'text/csv;charset=utf-8;');
+  }
+
+  const CRC32_TABLE = (() => {
+    const tbl = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) {
+        c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+      }
+      tbl[n] = c >>> 0;
+    }
+    return tbl;
+  })();
+
+  function computeCrc32(bytes) {
+    let crc = 0xffffffff;
+    for (let i = 0; i < bytes.length; i++) {
+      crc = CRC32_TABLE[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  function encodeUtf8Bytes(str) {
+    if (typeof TextEncoder !== 'undefined') {
+      return new TextEncoder().encode(String(str !== undefined && str !== null ? str : ''));
+    }
+    const utf8 = unescape(encodeURIComponent(String(str !== undefined && str !== null ? str : '')));
+    const out = new Uint8Array(utf8.length);
+    for (let i = 0; i < utf8.length; i++) {
+      out[i] = utf8.charCodeAt(i);
+    }
+    return out;
+  }
+
+  function buildZipBlob(entries) {
+    const now = new Date();
+    const dosTime = ((now.getHours() & 0x1f) << 11) | ((now.getMinutes() & 0x3f) << 5) | ((now.getSeconds() >> 1) & 0x1f);
+    const dosDate = (((Math.max(1980, now.getFullYear()) - 1980) & 0x7f) << 9) | (((now.getMonth() + 1) & 0x0f) << 5) | (now.getDate() & 0x1f);
+
+    const localChunks = [];
+    const centralChunks = [];
+    let offset = 0;
+
+    entries.forEach(entry => {
+      const nameBytes = encodeUtf8Bytes(entry.name);
+      const dataBytes = entry.content instanceof Uint8Array ? entry.content : encodeUtf8Bytes(entry.content);
+      const crc = computeCrc32(dataBytes);
+      const size = dataBytes.length;
+
+      const lfh = new ArrayBuffer(30 + nameBytes.length);
+      const lv = new DataView(lfh);
+      lv.setUint32(0, 0x04034b50, true);
+      lv.setUint16(4, 20, true);
+      lv.setUint16(6, 0x0800, true);
+      lv.setUint16(8, 0, true);
+      lv.setUint16(10, dosTime, true);
+      lv.setUint16(12, dosDate, true);
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, size, true);
+      lv.setUint32(22, size, true);
+      lv.setUint16(26, nameBytes.length, true);
+      lv.setUint16(28, 0, true);
+      new Uint8Array(lfh, 30).set(nameBytes);
+
+      localChunks.push(new Uint8Array(lfh), dataBytes);
+
+      const cdh = new ArrayBuffer(46 + nameBytes.length);
+      const cv = new DataView(cdh);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, dosTime, true);
+      cv.setUint16(14, dosDate, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, size, true);
+      cv.setUint32(24, size, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint16(30, 0, true);
+      cv.setUint16(32, 0, true);
+      cv.setUint16(34, 0, true);
+      cv.setUint16(36, 0, true);
+      cv.setUint32(38, 0, true);
+      cv.setUint32(42, offset, true);
+      new Uint8Array(cdh, 46).set(nameBytes);
+
+      centralChunks.push(new Uint8Array(cdh));
+      offset += 30 + nameBytes.length + size;
+    });
+
+    const centralSize = centralChunks.reduce((acc, chunk) => acc + chunk.length, 0);
+    const eocd = new ArrayBuffer(22);
+    const ev = new DataView(eocd);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(4, 0, true);
+    ev.setUint16(6, 0, true);
+    ev.setUint16(8, entries.length, true);
+    ev.setUint16(10, entries.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, offset, true);
+    ev.setUint16(20, 0, true);
+
+    return new Blob([...localChunks, ...centralChunks, new Uint8Array(eocd)], { type: 'application/zip' });
+  }
+
+  function downloadBundleForParticipant(sess, consentRec) {
+    if (!sess) return null;
+    const pid = sess.participant_id || selectedParticipant || 'PXX';
+    const entries = [
+      {
+        name: `session_${pid}.json`,
+        content: JSON.stringify(sess, null, 2)
+      }
+    ];
+    if (Array.isArray(sess.trials) && sess.trials.length > 0) {
+      entries.push({
+        name: `summary_${pid}.csv`,
+        content: buildCsvContentForSession(sess)
+      });
+    }
+    if (consentRec && consentRec.participant_id) {
+      entries.push({
+        name: `FIC_${pid}.html`,
+        content: buildStandaloneConsentHtml([consentRec], `FIC_${pid} — CERSES 2026-9119`)
+      });
+    }
+
+    const zipFilename = `dossier_${pid}.zip`;
+    const zipBlob = buildZipBlob(entries);
+    downloadBlob(zipBlob, zipFilename, 'application/zip');
+
+    if (consentRec && consentRec.participant_id) {
+      markFicDownloaded(pid);
+    }
+    footerStatus.textContent = `Dossier complet téléchargé : ${zipFilename}`;
+    return zipFilename;
   }
 
   function downloadJsonData() {
@@ -3291,7 +3476,7 @@
   }
 
   function downloadBlob(content, filename, mimeType) {
-    const blob = new Blob([content], { type: mimeType });
+    const blob = content instanceof Blob ? content : new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -3321,6 +3506,7 @@
     if (existingSessionBanner) existingSessionBanner.classList.add('hidden');
     if (btnResumeSession) btnResumeSession.classList.add('hidden');
     if (btnOpenFinish) btnOpenFinish.classList.add('hidden');
+    if (btnSetupDownloadBundle) btnSetupDownloadBundle.classList.add('hidden');
     if (btnSetupDownloadJson) btnSetupDownloadJson.classList.add('hidden');
     if (btnSetupDownloadCsv) btnSetupDownloadCsv.classList.add('hidden');
     if (btnSetupDownloadFic) btnSetupDownloadFic.classList.add('hidden');

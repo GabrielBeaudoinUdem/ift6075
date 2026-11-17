@@ -69,6 +69,7 @@
             <div class="action-row" style="margin-top: 10px; flex-wrap: wrap;">
               <button type="button" id="btn-resume-session" class="btn btn-primary hidden">Reprendre là où on s'était arrêté</button>
               <button type="button" id="btn-open-finish" class="btn btn-primary hidden">Ouvrir la synthèse / notes d'entrevue</button>
+              <button type="button" id="btn-setup-download-bundle" class="btn btn-primary btn-sm hidden">Télécharger dossier complet (FIC + JSON — PXX.zip)</button>
               <button type="button" id="btn-setup-download-json" class="btn btn-secondary btn-sm hidden">Télécharger JSON (PXX)</button>
               <button type="button" id="btn-setup-download-csv" class="btn btn-secondary btn-sm hidden">Télécharger CSV (PXX)</button>
               <button type="button" id="btn-setup-download-fic" class="btn btn-secondary btn-sm hidden">Télécharger FIC signé (PXX)</button>
@@ -1033,31 +1034,36 @@
 
           <!-- Always-visible export box for complete participant & browser-wide data -->
           <div class="export-panel-box">
-            <h3 style="margin-top: 0;">Téléchargement complet des données et du consentement signé</h3>
-            <p class="help-text" style="margin-top: 0;">
-              <strong>Séparation confidentielle :</strong> Le JSON (<code>session_PXX.json</code>) et le CSV contiennent uniquement les données expérimentales codées (sans nom ni signature). Le formulaire signé (<code>FIC_PXX.html</code>) est exporté <strong>séparément</strong>.
-            </p>
-            <div class="export-group-label">1. Données codées du test (PXX)</div>
-            <div class="action-row export-buttons" style="margin-top: 6px;">
-              <button type="button" id="btn-download-json" class="btn btn-primary">Télécharger tout le test (JSON — PXX)</button>
-              <button type="button" id="btn-download-csv" class="btn btn-primary">Télécharger le résumé (CSV — PXX)</button>
-            </div>
-
-            <div class="export-group-label" style="margin-top: 14px;">
-              2. Formulaire de consentement signé (FIC — fichier séparé)
+            <div class="export-group-label" style="margin-bottom: 6px;">
+              <span>Téléchargement tout-en-un du participant</span>
               <span id="fic-export-status-pill" class="status-pill progress hidden">À télécharger</span>
             </div>
-            <div class="action-row export-buttons" style="margin-top: 6px;">
-              <button type="button" id="btn-download-fic" class="btn btn-primary">Télécharger le FIC signé (FIC_PXX.html)</button>
-              <button type="button" id="btn-print-fic" class="btn btn-secondary">Imprimer / Sauver FIC en PDF (PXX)</button>
+            <p class="help-text" style="margin-top: 0;">
+              Un seul fichier <code>dossier_PXX.zip</code> contenant <strong>à la fois</strong> le consentement signé séparé (<code>FIC_PXX.html</code>), les données codées (<code>session_PXX.json</code>) et le tableau CSV (<code>summary_PXX.csv</code>) — sans jamais mélanger le nom dans les données JSON/CSV.
+            </p>
+            <div class="action-row export-buttons" style="margin-top: 10px;">
+              <button type="button" id="btn-download-bundle" class="btn btn-primary btn-lg">Télécharger tout (FIC + JSON + CSV — dossier_PXX.zip)</button>
             </div>
 
-            <div class="export-group-label" style="margin-top: 14px;">3. Export global de ce navigateur (tous les participants)</div>
-            <div class="action-row export-buttons" style="margin-top: 6px;">
-              <button type="button" id="btn-download-all-json" class="btn btn-secondary btn-sm">Télécharger toutes les sessions (JSON global)</button>
-              <button type="button" id="btn-download-all-csv" class="btn btn-secondary btn-sm">Télécharger toutes les sessions (CSV consolidé)</button>
-              <button type="button" id="btn-download-all-fic" class="btn btn-secondary btn-sm">Télécharger tous les FIC signés (HTML consolidé)</button>
-            </div>
+            <details class="export-secondary-details">
+              <summary>Fichiers séparés, impression PDF ou export global du navigateur</summary>
+              <div class="export-secondary-body">
+                <div class="export-group-label">Fichiers individuels (PXX)</div>
+                <div class="action-row export-buttons" style="margin-top: 6px;">
+                  <button type="button" id="btn-download-json" class="btn btn-secondary btn-sm">Télécharger JSON seul (PXX)</button>
+                  <button type="button" id="btn-download-csv" class="btn btn-secondary btn-sm">Télécharger CSV seul (PXX)</button>
+                  <button type="button" id="btn-download-fic" class="btn btn-secondary btn-sm">Télécharger FIC signé seul (FIC_PXX.html)</button>
+                  <button type="button" id="btn-print-fic" class="btn btn-secondary btn-sm">Imprimer / Sauver FIC en PDF (PXX)</button>
+                </div>
+
+                <div class="export-group-label" style="margin-top: 12px;">Export global de ce navigateur (tous les participants)</div>
+                <div class="action-row export-buttons" style="margin-top: 6px;">
+                  <button type="button" id="btn-download-all-json" class="btn btn-secondary btn-sm">Toutes les sessions (JSON global)</button>
+                  <button type="button" id="btn-download-all-csv" class="btn btn-secondary btn-sm">Toutes les sessions (CSV consolidé)</button>
+                  <button type="button" id="btn-download-all-fic" class="btn btn-secondary btn-sm">Tous les FIC signés (HTML consolidé)</button>
+                </div>
+              </div>
+            </details>
           </div>
 
           <div class="action-row" style="justify-content: space-between; margin-top: 16px;">
